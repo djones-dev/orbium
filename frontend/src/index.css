@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Neo Modern Terminal Theme */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    /* Color Palette: Deep Space & Amber Warning */
+    --color-bg: #09090b;
+    /* Deepest Black/Zinc */
+    --color-panel-bg: #18181b;
+    /* Component Background */
+    --color-border: #27272a;
+    /* Subtle Borders */
+
+    --color-text-primary: #e4e4e7;
+    /* High Contrast Text */
+    --color-text-secondary: #a1a1aa;
+    /* Muted Text */
+    --color-text-highlight: #fafafa;
+
+    --color-accent-primary: #f59e0b;
+    /* Amber/Orange - The "Neo" glow */
+    --color-accent-secondary: #71717a;
+    /* Neutral Gray Accent */
+    --color-accent-audio: #ef4444;
+    /* Red for Active Audio/Recording */
+
+    --font-ui: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: var(--font-ui);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-secondary);
+}
