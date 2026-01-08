@@ -1,21 +1,7 @@
-
-<!-- Improved compatibility of back to top link: See: https://github.com/djones-dev/orbium/pull/73 -->
 <a id="readme-top"></a>
-
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
 
 [![Contributors][contributors-shield]][contributors-url] [![Issues][issues-shield]][issues-url] [![Forks][forks-shield]][forks-url] [![LinkedIn][linkedin-shield]][linkedin-url]
 <!-- [![Stargazers][stars-shield]][stars-url] -->
-
-<!-- [![Unlicense License][license-shield]][license-url] -->
-
 
 <!-- PROJECT LOGO -->
 <!-- <br /> -->
@@ -64,10 +50,7 @@
   </ol>
 </details>
 
-<!-- ABOUT THE PROJECT -->
 ## About The Project
-
-<!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
 Orbium is a generative ambient synthesizer that reimagines music composition through the lens of orbital mechanics. Instead of a traditional linear timeline, you place celestial bodies in orbit around a central sun. Each body produces sound, and its orbital path determines the rhythm and evolution of your composition.
 
@@ -91,7 +74,6 @@ The interface combines two distinct worlds:
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- GETTING STARTED -->
 ## Getting Started
 
 To get a local copy of Orbium running, follow these steps.
@@ -128,7 +110,6 @@ To get a local copy of Orbium running, follow these steps.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- USAGE EXAMPLES -->
 ## Usage
 
 Once opened, you are greeted by the central Sun, which generates a continuous harmonic drone.
@@ -144,7 +125,6 @@ _More detailed documentation coming soon._
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- ROADMAP -->
 ## Roadmap
 
 - [x] **Core Architecture**
@@ -170,7 +150,6 @@ See the [open issues](https://github.com/djones-dev/orbium/issues) for a full li
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- CONTRIBUTING -->
 ## Contributing
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
@@ -183,31 +162,24 @@ Contributions are what make the open source community such an amazing place to l
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- LICENSE -->
 ## License
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- CONTACT -->
 ## Contact
 
 Project Link: [https://github.com/djones-dev/orbium](https://github.com/djones-dev/orbium)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- MARKDOWN LINKS & IMAGES -->
 [contributors-shield]: https://img.shields.io/github/contributors/djones-dev/orbium.svg?style=for-the-badge
 [contributors-url]: https://github.com/djones-dev/orbium/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/djones-dev/orbium.svg?style=for-the-badge
 [forks-url]: https://github.com/djones-dev/orbium/network/members
-[stars-shield]: https://img.shields.io/github/stars/djones-dev/orbium.svg?style=for-the-badge
-[stars-url]: https://github.com/djones-dev/orbium/stargazers
 [issues-shield]: https://img.shields.io/github/issues/djones-dev/orbium.svg?style=for-the-badge
 [issues-url]: https://github.com/djones-dev/orbium/issues
-[license-shield]: https://img.shields.io/github/license/djones-dev/orbium.svg?style=for-the-badge
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/daniel-jones-ba6325337
-[product-screenshot]: images/screenshot.png
 [React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
 [React-url]: https://reactjs.org/
 [Three.js]: https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=three.js&logoColor=white
