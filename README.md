@@ -1,5 +1,5 @@
 
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
+<!-- Improved compatibility of back to top link: See: https://github.com/djones-dev/Best-README-Template/pull/73 -->
 <a id="readme-top"></a>
 
 <!-- PROJECT SHIELDS -->
@@ -196,18 +196,17 @@ Project Link: [https://github.com/djones-dev/orbium](https://github.com/djones-d
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
+[contributors-shield]: https://img.shields.io/github/contributors/djones-dev/Best-README-Template.svg?style=for-the-badge
+[contributors-url]: https://github.com/djones-dev/Best-README-Template/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/djones-dev/Best-README-Template.svg?style=for-the-badge
+[forks-url]: https://github.com/djones-dev/Best-README-Template/network/members
+[stars-shield]: https://img.shields.io/github/stars/djones-dev/Best-README-Template.svg?style=for-the-badge
+[stars-url]: https://github.com/djones-dev/Best-README-Template/stargazers
+[issues-shield]: https://img.shields.io/github/issues/djones-dev/Best-README-Template.svg?style=for-the-badge
+[issues-url]: https://github.com/djones-dev/Best-README-Template/issues
+[license-shield]: https://img.shields.io/github/license/djones-dev/Best-README-Template.svg?style=for-the-badge
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
+[linkedin-url]: https://www.linkedin.com/in/daniel-jones-ba6325337
 [product-screenshot]: images/screenshot.png
 [React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
 [React-url]: https://reactjs.org/
