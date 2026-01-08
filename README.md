@@ -1,5 +1,5 @@
 
-<!-- Improved compatibility of back to top link: See: https://github.com/djones-dev/Best-README-Template/pull/73 -->
+<!-- Improved compatibility of back to top link: See: https://github.com/djones-dev/orbium/pull/73 -->
 <a id="readme-top"></a>
 
 <!-- PROJECT SHIELDS -->
@@ -196,15 +196,15 @@ Project Link: [https://github.com/djones-dev/orbium](https://github.com/djones-d
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[contributors-shield]: https://img.shields.io/github/contributors/djones-dev/Best-README-Template.svg?style=for-the-badge
-[contributors-url]: https://github.com/djones-dev/Best-README-Template/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/djones-dev/Best-README-Template.svg?style=for-the-badge
-[forks-url]: https://github.com/djones-dev/Best-README-Template/network/members
-[stars-shield]: https://img.shields.io/github/stars/djones-dev/Best-README-Template.svg?style=for-the-badge
-[stars-url]: https://github.com/djones-dev/Best-README-Template/stargazers
-[issues-shield]: https://img.shields.io/github/issues/djones-dev/Best-README-Template.svg?style=for-the-badge
-[issues-url]: https://github.com/djones-dev/Best-README-Template/issues
-[license-shield]: https://img.shields.io/github/license/djones-dev/Best-README-Template.svg?style=for-the-badge
+[contributors-shield]: https://img.shields.io/github/contributors/djones-dev/orbium.svg?style=for-the-badge
+[contributors-url]: https://github.com/djones-dev/orbium/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/djones-dev/orbium.svg?style=for-the-badge
+[forks-url]: https://github.com/djones-dev/orbium/network/members
+[stars-shield]: https://img.shields.io/github/stars/djones-dev/orbium.svg?style=for-the-badge
+[stars-url]: https://github.com/djones-dev/orbium/stargazers
+[issues-shield]: https://img.shields.io/github/issues/djones-dev/orbium.svg?style=for-the-badge
+[issues-url]: https://github.com/djones-dev/orbium/issues
+[license-shield]: https://img.shields.io/github/license/djones-dev/orbium.svg?style=for-the-badge
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/daniel-jones-ba6325337
 [product-screenshot]: images/screenshot.png
