@@ -17,6 +17,7 @@ interface TerminalSliderProps {
 /**
  * Terminal-style slider with CSS-based bar
  * "Neo Modern" Style: Sleek, responsive, support for log scales
+ * Supports Double-Click to Edit
  */
 export const TerminalSlider: React.FC<TerminalSliderProps> = ({
   label,
@@ -93,6 +94,40 @@ export const TerminalSlider: React.FC<TerminalSliderProps> = ({
     }
   }, [isDragging]);
 
+  // Editing State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+    setEditValue(value.toString());
+    // Focus timeout to ensure input is rendered
+    setTimeout(() => inputRef.current?.focus(), 10);
+  };
+
+  const handleInputBlur = () => {
+    commitEdit();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+
+  const commitEdit = () => {
+    const num = parseFloat(editValue);
+    if (!isNaN(num)) {
+      // Clamp
+      const clamped = Math.max(min, Math.min(max, num));
+      onChange(clamped);
+    }
+    setIsEditing(false);
+  };
+
   // Display Value Logic
   let displayString = '';
   if (formatValue) {
@@ -106,7 +141,25 @@ export const TerminalSlider: React.FC<TerminalSliderProps> = ({
     <div className="flex flex-col gap-1 py-1 font-mono text-xs text-[var(--color-text-primary)]">
       <div className="flex justify-between items-center opacity-80">
         <span>{label.toUpperCase()}</span>
-        <span className="text-[var(--color-accent-primary)]">{displayString}</span>
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleInputBlur}
+            onKeyDown={handleKeyDown}
+            className="w-20 bg-[var(--color-bg)] border border-[var(--color-accent-primary)] text-[var(--color-accent-primary)] text-right px-1 outline-none font-mono text-xs"
+          />
+        ) : (
+          <span
+            className="text-[var(--color-accent-primary)] hover:text-white cursor-text transition-colors"
+            onDoubleClick={handleDoubleClick}
+            title="Double-click to type value"
+          >
+            {displayString}
+          </span>
+        )}
       </div>
 
       <div

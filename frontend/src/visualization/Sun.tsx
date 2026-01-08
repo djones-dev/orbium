@@ -13,12 +13,16 @@ export const Sun: React.FC = () => {
     const uniforms = useMemo(
         () => ({
             uTime: { value: 0 },
-            uBrightness: { value: 40 },
-            uRichness: { value: 60 },
-            uPulse: { value: 30 },
-            uVolume: { value: 50 },
-            uColorCore: { value: new THREE.Color('#fff8e0') },
-            uColorEdge: { value: new THREE.Color('#ff4500') },
+            uBaseColor: { value: new THREE.Color('#3a0900') }, // Deep Red/Black Void
+            uSecondaryColor: { value: new THREE.Color('#ff3300') }, // Fiery Red/Orange
+            uGlowColor: { value: new THREE.Color('#ffcc00') }, // Golden Yellow/White
+            uNoiseScale: { value: 1.0 }, // Slightly lower base scale for larger flames
+            uDisplacementStrength: { value: 0.8 },
+            uPulseSpeed: { value: 1.0 },
+            uGlowIntensity: { value: 1.0 },
+            uOpacity: { value: 1.0 },
+            uMousePosition: { value: new THREE.Vector3(0, 0, 0) },
+            uMouseInfluence: { value: 0.0 },
         }),
         []
     );
@@ -29,30 +33,42 @@ export const Sun: React.FC = () => {
 
             const params = engine.getSunParams();
             if (params) {
-                // Map raw audio params back to 0-100 range for visualization shaders
-                // Cutoff: 20-10000 -> 0-100 (Logarithmic approx would be better but linear for now)
-                materialRef.current.uniforms.uBrightness.value = (params.filterCutoff / 10000) * 100;
+                // Map raw audio params to Signal Core visuals
 
-                // Spread: 0-50 -> 0-100
-                materialRef.current.uniforms.uRichness.value = (params.detuneSpread / 50) * 100;
+                // 1. Cutoff (Hz) -> Noise Scale (Density)
+                const logCutoff = Math.log10(params.filterCutoff);
+                const scale = 0.5 + ((logCutoff - 1.3) / 2.7) * 2.5;
 
-                // LFO: 0.1-20 -> 0-100
-                materialRef.current.uniforms.uPulse.value = (params.lfoRate / 20) * 100;
+                // Distortion adds grit/density to noise
+                const distortionFactor = (params.distortion || 0) / 100;
+                materialRef.current.uniforms.uNoiseScale.value = scale + (distortionFactor * 1.5);
 
-                // Volume: -60-0 -> 0-100
-                materialRef.current.uniforms.uVolume.value = ((params.gainLevel + 60) / 60) * 100;
+                // 2. Spread (Cents) -> Displacement (Spike Height)
+                const baseDisplace = 0.1 + (params.detuneSpread / 50) * 2.4;
+                // Distortion boosts displacement significantly (explosive)
+                materialRef.current.uniforms.uDisplacementStrength.value = baseDisplace + (distortionFactor * 2.0);
+
+                // 3. LFO Rate (Hz) -> Pulse Speed
+                // Distortion makes it pulse faster (chaos)
+                materialRef.current.uniforms.uPulseSpeed.value = (0.2 + (params.lfoRate / 20) * 4.8) + (distortionFactor * 3.0);
+
+                // 4. Gain (dB) -> Glow Intensity
+                const linearGain = Math.pow(10, params.gainLevel / 20);
+                materialRef.current.uniforms.uGlowIntensity.value = linearGain * 2.0;
             }
         }
     });
 
     return (
         <mesh ref={meshRef} position={[0, 0, 0]}>
-            <sphereGeometry args={[1, 64, 64]} />
+            <icosahedronGeometry args={[1.4, 150]} />
             <shaderMaterial
                 ref={materialRef}
                 vertexShader={vertexShader}
                 fragmentShader={fragmentShader}
                 uniforms={uniforms}
+                transparent={true}
+                side={THREE.DoubleSide}
             />
         </mesh>
     );

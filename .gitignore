@@ -60,3 +60,5 @@ docker-compose.override.yml
 # Orbium Specific
 # (If we successfully mapped postgres locally instead of named volume in future)
 postgres_data/
+
+REFERENCE/

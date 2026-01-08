@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { TerminalPanel } from './terminal/TerminalPanel';
 import { TerminalSlider } from './terminal/TerminalSlider';
+import { TerminalSelect } from './terminal/TerminalSelect';
 import { useAudioEngine } from '../hooks/useAudioEngine';
 import { SunParameters } from '../types/audio';
-import { freqToNote } from '../audio/audioUtils';
+import { freqToNote, midiToFreq, freqToMidi } from '../audio/audioUtils';
+
+// Available Root Modes
+type RootMode = 'HZ' | 'NOTE';
 
 export const SunPanel: React.FC = () => {
     const { engine, isAudioActive } = useAudioEngine();
@@ -14,11 +18,17 @@ export const SunPanel: React.FC = () => {
         filterCutoff: 1000,
         detuneSpread: 10,
         lfoRate: 0.5,
-        gainLevel: -12
+        gainLevel: -12,
+        waveform: 'sine',
+        distortion: 0,
+        noiseVol: -40,
+        subVol: -12,
+        noiseEnabled: true,
+        subEnabled: true
     });
 
-    // Display modes
-    const [showNoteName, setShowNoteName] = useState(true);
+    // UI State
+    const [rootMode, setRootMode] = useState<RootMode>('HZ');
 
     // Sync params from engine on mount/update
     useEffect(() => {
@@ -28,30 +38,89 @@ export const SunPanel: React.FC = () => {
         }
     }, [engine, isAudioActive]);
 
-    const handleParamChange = (key: keyof SunParameters, value: number) => {
+    const handleParamChange = (key: keyof SunParameters, value: number | string | boolean) => {
         const newParams = { ...params, [key]: value };
         setParams(newParams);
         engine.updateSunParams({ [key]: value });
     };
 
+    // Special handler for Root Frequency to support modes
+    const handleRootChange = (value: number) => {
+        if (rootMode === 'NOTE') {
+            // value comes in as MIDI index from the slider
+            const freq = midiToFreq(Math.round(value));
+            handleParamChange('rootFrequency', freq);
+        } else {
+            // value is Hz
+            handleParamChange('rootFrequency', value);
+        }
+    };
+
+    // Calculate current MIDI value for the slider when in Note mode
+    // We assume the stored param is always Hz
+    const currentMidi = freqToMidi(params.rootFrequency);
+
     return (
         <div className="sun-panel-container pointer-events-auto">
             <TerminalPanel title="SUN PARAMETERS">
+
+                {/* TOOLBAR / MODE SWITCH */}
+                <div className="flex justify-end px-2 pt-1">
+                    <div className="flex gap-2 text-[10px] font-mono">
+                        <button
+                            onClick={() => setRootMode('HZ')}
+                            className={`px-2 py-0.5 border ${rootMode === 'HZ' ? 'bg-[var(--color-accent-primary)] text-black border-[var(--color-accent-primary)]' : 'text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-white'}`}
+                        >
+                            HZ MODE
+                        </button>
+                        <button
+                            onClick={() => setRootMode('NOTE')}
+                            className={`px-2 py-0.5 border ${rootMode === 'NOTE' ? 'bg-[var(--color-accent-primary)] text-black border-[var(--color-accent-primary)]' : 'text-[var(--color-text-secondary)] border-[var(--color-border)] hover:text-white'}`}
+                        >
+                            NOTE MODE
+                        </button>
+                    </div>
+                </div>
+
                 <div className="flex flex-col gap-2 p-2">
 
-                    {/* ROOT: DUAL DISPLAY (Hz / Note) */}
-                    <div onClick={() => setShowNoteName(!showNoteName)} className="cursor-pointer" title="Click to toggle Hz/Note">
+                    <TerminalSelect
+                        label="WAVEFORM"
+                        value={params.waveform}
+                        options={[
+                            { label: 'SINE', value: 'sine' },
+                            { label: 'TRI', value: 'triangle' },
+                            { label: 'SAW', value: 'sawtooth' },
+                            { label: 'SQR', value: 'square' },
+                        ]}
+                        onChange={(v) => handleParamChange('waveform', v)}
+                    />
+
+                    {/* ROOT Slider changes behavior based on Mode */}
+                    {rootMode === 'HZ' ? (
                         <TerminalSlider
-                            label="ROOT"
+                            label="ROOT FREQ"
                             value={params.rootFrequency}
                             min={20}
                             max={880}
-                            unit=""
+                            unit=" Hz"
                             logarithmic={true}
-                            formatValue={(v) => showNoteName ? freqToNote(v) : `${v.toFixed(1)} Hz`}
-                            onChange={(v) => handleParamChange('rootFrequency', v)}
+                            precision={1}
+                            onChange={handleRootChange}
                         />
-                    </div>
+                    ) : (
+                        <TerminalSlider
+                            label="ROOT NOTE"
+                            value={currentMidi}
+                            min={21} // A0
+                            max={108} // C8
+                            unit=""
+                            precision={0}
+                            // Display the calculated Note Name for the current MIDI integer
+                            formatValue={(v) => freqToNote(midiToFreq(Math.round(v)))}
+                            onChange={handleRootChange}
+                        />
+                    )}
 
                     <TerminalSlider
                         label="CUTOFF"
@@ -86,6 +155,16 @@ export const SunPanel: React.FC = () => {
                     />
 
                     <TerminalSlider
+                        label="DISTORTION"
+                        value={params.distortion}
+                        min={0}
+                        max={100}
+                        unit="%"
+                        precision={0}
+                        onChange={(v) => handleParamChange('distortion', v)}
+                    />
+
+                    <TerminalSlider
                         label="GAIN"
                         value={params.gainLevel}
                         min={-60}
@@ -94,6 +173,59 @@ export const SunPanel: React.FC = () => {
                         precision={1}
                         onChange={(v) => handleParamChange('gainLevel', v)}
                     />
+
+                    {/* MIXER SECTION */}
+                    <div className="pt-2 mt-2 border-t border-[var(--color-border)]">
+                        <div className="text-[10px] text-[var(--color-text-secondary)] mb-1 font-bold">MIXER</div>
+
+                        {/* SUB CHANNEL */}
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="flex-1">
+                                <TerminalSlider
+                                    label="SUB"
+                                    value={params.subVol || -12}
+                                    min={-60}
+                                    max={0}
+                                    unit=" dB"
+                                    precision={0}
+                                    onChange={(v) => handleParamChange('subVol', v)}
+                                />
+                            </div>
+                            <button
+                                className={`w-8 h-8 flex items-center justify-center border text-[10px] font-bold transition-all ${params.subEnabled !== false // default true
+                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-dim)] text-[var(--color-primary)]'
+                                    : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-secondary)]'
+                                    }`}
+                                onClick={() => handleParamChange('subEnabled', params.subEnabled === false)}
+                            >
+                                {params.subEnabled !== false ? 'ON' : 'OFF'}
+                            </button>
+                        </div>
+
+                        {/* NOISE CHANNEL */}
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                                <TerminalSlider
+                                    label="NOISE"
+                                    value={params.noiseVol || -40}
+                                    min={-60}
+                                    max={0}
+                                    unit=" dB"
+                                    precision={0}
+                                    onChange={(v) => handleParamChange('noiseVol', v)}
+                                />
+                            </div>
+                            <button
+                                className={`w-8 h-8 flex items-center justify-center border text-[10px] font-bold transition-all ${params.noiseEnabled !== false // default true
+                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-dim)] text-[var(--color-primary)]'
+                                    : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-secondary)]'
+                                    }`}
+                                onClick={() => handleParamChange('noiseEnabled', params.noiseEnabled === false)}
+                            >
+                                {params.noiseEnabled !== false ? 'ON' : 'OFF'}
+                            </button>
+                        </div>
+                    </div>
 
                 </div>
             </TerminalPanel>

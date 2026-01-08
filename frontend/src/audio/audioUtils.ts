@@ -41,3 +41,12 @@ export const fromLogScale = (freq: number, min: number, max: number): number => 
     // log(freq / min) / log(max / min)
     return Math.log(freq / min) / Math.log(max / min);
 };
+
+export const midiToFreq = (midi: number): number => {
+    return A4_FREQ * Math.pow(2, (midi - 69) / 12);
+};
+
+export const freqToMidi = (freq: number): number => {
+    if (freq <= 0) return 0;
+    return 69 + 12 * Math.log2(freq / A4_FREQ);
+};
