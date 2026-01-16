@@ -9,6 +9,7 @@ uniform float uDisplacementStrength;
 uniform float uPulseSpeed; // Added for audio reactivity control
 uniform vec3 uMousePosition;
 uniform float uMouseInfluence;
+uniform float uSelected;
 
 // Varyings passed to fragment shader
 varying float vDisplacement;
@@ -155,6 +156,9 @@ void main() {
 
   // Apply outward along normal to keep it 3D
   pos += normal * totalDisplacement * uDisplacementStrength;
+
+  // Selection scale boost
+  pos *= (1.0 + uSelected * 0.1);
 
   vDisplacement = totalDisplacement;
   vNormal = normalize(normalMatrix * normal);

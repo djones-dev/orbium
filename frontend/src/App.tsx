@@ -1,11 +1,14 @@
 import Layout from './ui/Layout'
 import Scene from './visualization/Scene'
+import { SelectionProvider } from './contexts/SelectionContext'
 
 function App() {
     return (
-        <Layout>
-            <Scene />
-        </Layout>
+        <SelectionProvider>
+            <Layout>
+                <Scene />
+            </Layout>
+        </SelectionProvider>
     )
 }
 

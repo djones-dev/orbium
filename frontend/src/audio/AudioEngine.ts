@@ -1,6 +1,7 @@
 import { SunLayer } from './SunLayer';
 import { SunParameters } from '../types/audio';
 import { OrbitalBodiesManager } from '../simulation/OrbitalBodiesManager';
+import { PresetManager } from '../presets/PresetManager';
 // @ts-ignore
 import noiseProcessorUrl from './worklets/noise-processor.js?url';
 
@@ -13,8 +14,10 @@ export class AudioEngine {
     public analyser: AnalyserNode | null = null;
     public sunLayer: SunLayer | null = null;
     public bodiesManager: OrbitalBodiesManager;
+    public presets: PresetManager;
 
     private constructor() {
+        this.presets = new PresetManager();
         this.bodiesManager = new OrbitalBodiesManager((id, params) => {
             // Check if this is the sun
             const body = this.bodiesManager.getBodyById(id);

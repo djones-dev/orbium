@@ -6,11 +6,16 @@ import vertexShader from './shaders/sun.vert?raw';
 import fragmentShader from './shaders/sun.frag?raw';
 import { OrbitalBody } from '../types/orbital';
 import { SunParameters } from '../types/audio';
+import { useSelection } from '../contexts/SelectionContext';
 
-export const Sun: React.FC<{ body?: OrbitalBody }> = ({ body }) => {
+export const Sun: React.FC<{ body?: OrbitalBody, id?: string }> = ({ body, id = 'sun-primary' }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const { engine } = useAudioEngine();
+    const { selectedBodyId, select } = useSelection();
+
+    const bodyId = body?.id || id;
+    const isSelected = selectedBodyId === bodyId;
 
     const uniforms = useMemo(
         () => ({
@@ -25,6 +30,7 @@ export const Sun: React.FC<{ body?: OrbitalBody }> = ({ body }) => {
             uOpacity: { value: 1.0 },
             uMousePosition: { value: new THREE.Vector3(0, 0, 0) },
             uMouseInfluence: { value: 0.0 },
+            uSelected: { value: 0.0 },
         }),
         []
     );
@@ -32,6 +38,11 @@ export const Sun: React.FC<{ body?: OrbitalBody }> = ({ body }) => {
     useFrame((state) => {
         if (materialRef.current) {
             materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+            materialRef.current.uniforms.uSelected.value = THREE.MathUtils.lerp(
+                materialRef.current.uniforms.uSelected.value,
+                isSelected ? 1.0 : 0.0,
+                0.1
+            );
 
             // Use passed body params or fallback to engine if body not available yet
             const params = body?.audioParams as SunParameters || engine.getSunParams();
@@ -63,8 +74,19 @@ export const Sun: React.FC<{ body?: OrbitalBody }> = ({ body }) => {
         }
     });
 
+    const handleClick = (e: any) => {
+        e.stopPropagation();
+        select(bodyId);
+    };
+
     return (
-        <mesh ref={meshRef} position={[0, 0, 0]}>
+        <mesh
+            ref={meshRef}
+            position={[0, 0, 0]}
+            onClick={handleClick}
+            onPointerOver={() => (document.body.style.cursor = 'pointer')}
+            onPointerOut={() => (document.body.style.cursor = 'auto')}
+        >
             <icosahedronGeometry args={[1.4, 150]} />
             <shaderMaterial
                 ref={materialRef}

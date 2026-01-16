@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { Sun } from './Sun';
 import { useAudioEngine } from '../hooks/useAudioEngine';
+import { useSelection } from '../contexts/SelectionContext';
 
 /**
  * 3D visualization scene for Orbium
@@ -16,6 +17,8 @@ const Scene = () => {
     const cameraZ = Math.cos(cameraAngle) * cameraDistance;
 
     const { engine } = useAudioEngine();
+    const { selectedBody } = useSelection();
+
     const sunBody = engine.bodiesManager.getBodies().find(b => b.type === 'sun');
 
     return (
@@ -46,15 +49,17 @@ const Scene = () => {
                 {/* Shader-driven Sun */}
                 <Sun body={sunBody} />
 
-                {/* Placeholder Orbital Path - Terminal-style green ring */}
-                <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                    <ringGeometry args={[4.95, 5.05, 64]} />
-                    <meshBasicMaterial
-                        color="#33ff33"
-                        opacity={0.15}
-                        transparent
-                    />
-                </mesh>
+                {/* Selected Body Orbit Path */}
+                {selectedBody && selectedBody.position.radius > 0 && (
+                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                        <ringGeometry args={[selectedBody.position.radius - 0.05, selectedBody.position.radius + 0.05, 128]} />
+                        <meshBasicMaterial
+                            color="#33ff33"
+                            opacity={0.25}
+                            transparent
+                        />
+                    </mesh>
+                )}
 
                 {/* Reference grid at orbital plane (subtle, for development) */}
                 <gridHelper
