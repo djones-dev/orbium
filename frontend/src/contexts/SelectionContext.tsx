@@ -14,7 +14,18 @@ const SelectionContext = createContext<SelectionContextType | undefined>(undefin
 
 export const SelectionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
-    const { engine, isAudioActive } = useAudioEngine();
+    const { engine } = useAudioEngine();
+
+    // State to force re-render when bodies change
+    const [version, setVersion] = useState(0);
+
+    // Subscribe to manager changes
+    React.useEffect(() => {
+        const unsubscribe = engine.bodiesManager.subscribe(() => {
+            setVersion(v => v + 1);
+        });
+        return () => { unsubscribe(); };
+    }, [engine]);
 
     const select = useCallback((id: string) => {
         setSelectedBodyId(id);
@@ -27,9 +38,8 @@ export const SelectionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const selectedBody = useMemo(() => {
         if (!selectedBodyId) return null;
         const body = engine.bodiesManager.getBodyById(selectedBodyId);
-        console.log('SelectionContext: Looking for ID', selectedBodyId, 'Found body:', !!body, 'Bodies count:', engine.bodiesManager.getBodies().length);
         return body || null;
-    }, [selectedBodyId, engine.bodiesManager, isAudioActive]);
+    }, [selectedBodyId, engine.bodiesManager, version]);
 
     const value = useMemo(() => ({
         selectedBody,

@@ -16,7 +16,9 @@ export const DEFAULT_PRESETS: Preset[] = [
             distortion: 0,
             gainLevel: -6
         },
-        metadata: { createdAt: now, updatedAt: now }
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     },
     {
         id: 'planet-saw-aggressive',
@@ -30,7 +32,9 @@ export const DEFAULT_PRESETS: Preset[] = [
             distortion: 10,
             gainLevel: -12
         },
-        metadata: { createdAt: now, updatedAt: now }
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     },
     {
         id: 'planet-tri-soft',
@@ -44,7 +48,9 @@ export const DEFAULT_PRESETS: Preset[] = [
             distortion: 0,
             gainLevel: -9
         },
-        metadata: { createdAt: now, updatedAt: now }
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     },
     // Moon Modulators
     {
@@ -57,7 +63,9 @@ export const DEFAULT_PRESETS: Preset[] = [
             lfoRate: 0.5,
             detuneSpread: 10
         },
-        metadata: { createdAt: now, updatedAt: now }
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     },
     {
         id: 'moon-fast-shiver',
@@ -69,7 +77,9 @@ export const DEFAULT_PRESETS: Preset[] = [
             lfoRate: 8.0,
             detuneSpread: 25
         },
-        metadata: { createdAt: now, updatedAt: now }
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     },
     // Attributes
     {
@@ -82,7 +92,9 @@ export const DEFAULT_PRESETS: Preset[] = [
             filterCutoff: 400,
             gainLevel: -3
         },
-        metadata: { createdAt: now, updatedAt: now }
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     },
     {
         id: 'attr-heavy-dist',
@@ -95,6 +107,8 @@ export const DEFAULT_PRESETS: Preset[] = [
             noiseEnabled: true,
             noiseVol: -20
         },
-        metadata: { createdAt: now, updatedAt: now }
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     }
 ];

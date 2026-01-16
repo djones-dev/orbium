@@ -3,12 +3,14 @@ import './ResizableLayout.css';
 import { SelectedBodyInfo } from './SelectedBodyInfo';
 
 import { PresetBrowser } from './PresetBrowser';
+import { useUIStore } from '../stores/uiStore';
 
 interface ResizableLayoutProps {
     children: React.ReactNode;
 }
 
 const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
+    const setSaveModalOpen = useUIStore(state => state.setSaveModalOpen);
     const [sidebarWidth, setSidebarWidth] = useState(20); // percentage
     const [inspectorHeight, setInspectorHeight] = useState(250); // pixels
     const [bottomLeftVisible, setBottomLeftVisible] = useState(true);
@@ -73,15 +75,26 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                 <div className="pane left-sidebar">
                     <div className="pane-header-container">
                         <h2 className="pane-header">PRESETS</h2>
-                        {!bottomLeftVisible && (
+                        <div className="pane-header-actions">
                             <button
-                                className="pane-toggle"
-                                onClick={() => setBottomLeftVisible(true)}
-                                title="Show Bottom-Left"
+                                className="mgmt-cog-btn"
+                                onClick={() => setSaveModalOpen(true)}
+                                title="Save Current as Preset"
                             >
-                                ＋
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
                             </button>
-                        )}
+                            {!bottomLeftVisible && (
+                                <button
+                                    className="pane-toggle"
+                                    onClick={() => setBottomLeftVisible(true)}
+                                    title="Show Bottom-Left"
+                                >
+                                    ＋
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="pane-content">
                         <PresetBrowser />

@@ -36,22 +36,61 @@ export const Sun: React.FC<{ body?: OrbitalBody, id?: string }> = ({ body, id = 
     );
 
     useFrame((state) => {
-        if (materialRef.current) {
-            materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-            materialRef.current.uniforms.uSelected.value = THREE.MathUtils.lerp(
-                materialRef.current.uniforms.uSelected.value,
-                isSelected ? 1.0 : 0.0,
-                0.1
-            );
+        if (meshRef.current) {
+            if (materialRef.current) {
+                materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+                materialRef.current.uniforms.uSelected.value = THREE.MathUtils.lerp(
+                    materialRef.current.uniforms.uSelected.value,
+                    isSelected ? 1.0 : 0.0,
+                    0.1
+                );
+            }
+
+            // Orbital Movement for non-sun bodies
+            // Only update if playing
+            if (body && body.type !== 'sun' && engine?.context?.state === 'running') {
+                // Update angle based on velocity (rad/s)
+                // Note limits: mutating state directly for visual smoothness
+                // In a full physics engine this would be separate
+                const dt = state.clock.getDelta();
+                body.position.angle += (body.velocity || 0.1) * dt;
+
+                const x = body.position.radius * Math.cos(body.position.angle);
+                const z = body.position.radius * Math.sin(body.position.angle);
+                meshRef.current.position.set(x, 0, z);
+            }
 
             // Use passed body params or fallback to engine if body not available yet
-            const params = body?.audioParams as SunParameters || engine.getSunParams();
+            const rawParams = body?.audioParams || engine.getSunParams();
 
-            if (params) {
+            // Apply defaults to ensure we don't pass undefined to math functions
+            const params: SunParameters = {
+                rootFrequency: 60,
+                filterCutoff: 5000,
+                detuneSpread: 10,
+                lfoRate: 0.5,
+                distortion: 0,
+                gainLevel: -6,
+                waveform: 'sine',
+                noiseEnabled: false,
+                noiseVol: -20,
+                subEnabled: true,
+                subVol: -10,
+                // Override with rawParams, but we need to ensure rawParams doesn't introduce undefineds for required fields?
+                // The spread ...rawParams will overwrite with undefined if the field exists but is undefined.
+                // Actually, Partial<SunParameters> can have undefineds.
+                // We should careful-merge or simple spread is usually fine if the source properties are missing, but if they are explicitly undefined, it might be an issue.
+                // However, Preset params usually just lack keys.
+                ...rawParams
+            } as SunParameters; // assertions sometimes needed if rawParams has optional fields that we want to treat as required after default.
+
+            if (params && materialRef.current) {
                 // Map raw audio params to Signal Core visuals
 
                 // 1. Cutoff (Hz) -> Noise Scale (Density)
-                const logCutoff = Math.log10(params.filterCutoff);
+                // Safe guard against 0 or negative cutoff for log
+                const cutoff = Math.max(20, params.filterCutoff);
+                const logCutoff = Math.log10(cutoff);
                 const scale = 0.5 + ((logCutoff - 1.3) / 2.7) * 2.5;
 
                 // Distortion adds grit/density to noise
@@ -79,10 +118,20 @@ export const Sun: React.FC<{ body?: OrbitalBody, id?: string }> = ({ body, id = 
         select(bodyId);
     };
 
+    // Initial position
+    const initialPos = useMemo(() => {
+        if (body && body.type !== 'sun') {
+            const x = body.position.radius * Math.cos(body.position.angle);
+            const z = body.position.radius * Math.sin(body.position.angle);
+            return [x, 0, z] as [number, number, number];
+        }
+        return [0, 0, 0] as [number, number, number];
+    }, []);
+
     return (
         <mesh
             ref={meshRef}
-            position={[0, 0, 0]}
+            position={initialPos}
             onClick={handleClick}
             onPointerOver={() => (document.body.style.cursor = 'pointer')}
             onPointerOut={() => (document.body.style.cursor = 'auto')}

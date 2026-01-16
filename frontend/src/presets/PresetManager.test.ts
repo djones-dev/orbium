@@ -5,7 +5,7 @@ import { Preset } from '../types/preset';
  * Manual verification script for PresetManager.
  * This can be imported and run in a dev environment.
  */
-export function verifyPresetManager() {
+export async function verifyPresetManager() {
     console.log('--- Starting PresetManager Verification ---');
 
     // Mock localStorage for non-browser environments if necessary
@@ -21,7 +21,7 @@ export function verifyPresetManager() {
     const manager = new PresetManager();
 
     // 1. Load defaults
-    const presets = manager.loadPresets();
+    const presets = await manager.loadPresets();
     console.log(`Loaded ${presets.length} presets (Expected: 7)`);
     if (presets.length !== 7) console.error('Verification Failed: Expected 7 default presets');
 
@@ -43,10 +43,12 @@ export function verifyPresetManager() {
         type: 'generator',
         category: 'sun',
         parameters: { rootFrequency: 440 },
-        metadata: { createdAt: Date.now(), updatedAt: Date.now() }
+        is_default: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
     };
 
-    manager.savePreset(newPreset);
+    await manager.savePreset(newPreset);
     const retrieved = manager.getPresetById('test-preset');
     if (retrieved && retrieved.name === 'Test Preset') {
         console.log('Save/Retrieval: SUCCESS');
@@ -54,7 +56,7 @@ export function verifyPresetManager() {
         console.error('Save/Retrieval: FAILED');
     }
 
-    manager.deletePreset('test-preset');
+    await manager.deletePreset('test-preset');
     if (!manager.getPresetById('test-preset')) {
         console.log('Delete: SUCCESS');
     } else {

@@ -17,4 +17,8 @@ export interface OrbitalBody {
         size: number;
         shaderUniforms: Record<string, any>;
     };
+    // Backend persistence fields
+    presetId?: string;
+    attributes?: Record<string, any>[];
+    parentId?: string;
 }

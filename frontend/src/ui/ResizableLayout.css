@@ -67,6 +67,36 @@
   justify-content: center;
 }
 
+.pane-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mgmt-cog-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.5s ease;
+  opacity: 0.6;
+}
+
+.mgmt-cog-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.mgmt-cog-btn:hover {
+  color: var(--color-accent-primary);
+  transform: rotate(90deg);
+  opacity: 1;
+}
+
 .pane-toggle:hover {
   color: var(--color-accent-primary);
   transform: scale(1.1);

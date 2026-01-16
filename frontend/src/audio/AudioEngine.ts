@@ -1,7 +1,10 @@
+// Imports
 import { SunLayer } from './SunLayer';
 import { SunParameters } from '../types/audio';
 import { OrbitalBodiesManager } from '../simulation/OrbitalBodiesManager';
 import { PresetManager } from '../presets/PresetManager';
+import { OrbitalBody } from '../types/orbital';
+import { Preset } from '../types/preset';
 // @ts-ignore
 import noiseProcessorUrl from './worklets/noise-processor.js?url';
 
@@ -15,16 +18,31 @@ export class AudioEngine {
     public sunLayer: SunLayer | null = null;
     public bodiesManager: OrbitalBodiesManager;
     public presets: PresetManager;
+    public layers = new Map<string, SunLayer>(); // Manage multiple layers
 
     private constructor() {
         this.presets = new PresetManager();
-        this.bodiesManager = new OrbitalBodiesManager((id, params) => {
-            // Check if this is the sun
-            const body = this.bodiesManager.getBodyById(id);
-            if (body && body.type === 'sun') {
-                this.updateSunParams(params);
+        this.bodiesManager = new OrbitalBodiesManager(
+            (id, params) => {
+                // onParamsChange
+                if (id === 'sun-primary') {
+                    this.updateSunParams(params);
+                    return;
+                }
+                const layer = this.layers.get(id);
+                if (layer) {
+                    layer.updateParams(params);
+                }
+            },
+            (body) => {
+                // onBodyAdded
+                this.createLayerForBody(body);
+            },
+            (id) => {
+                // onBodyRemoved
+                this.removeLayerForBody(id);
             }
-        });
+        );
     }
 
     public static getInstance(): AudioEngine {
@@ -91,6 +109,7 @@ export class AudioEngine {
         this.sunLayer = new SunLayer(this.context);
         this.sunLayer.connect(this.masterGain);
 
+
         // Register Sun as an OrbitalBody
         this.bodiesManager.addBody({
             id: 'sun-primary',
@@ -102,11 +121,70 @@ export class AudioEngine {
             visualConfig: {
                 color: '#ffcc00',
                 size: 1.4,
-                shaderUniforms: {} // Populated by Sun.tsx
+                shaderUniforms: {}
             }
-        });
+        }, false); // Sync false because sun is static/default
+
+        // Load bodies from backend
+        // This will trigger onBodyAdded for each body, creating layers
+        await this.bodiesManager.loadFromBackend();
+
+        // If Sun was loaded from backend, we might have a duplicate 'sun-primary' or conflict.
+        // For simplicity, we assume backend stores planets/moons. 
+        // If backend sends a 'sun', we should probably reuse the sunLayer.
+        // Current implementation of createLayerForBody handles this check.
 
         console.log('Audio Engine Initialized');
+    }
+
+    private createLayerForBody(body: OrbitalBody) {
+        if (!this.context || !this.masterGain) return;
+
+        if (body.type === 'sun') {
+            // If it's the primary sun, we already have it.
+            // If we support multiple suns, we'd add logic here.
+            return;
+        }
+
+        if (this.layers.has(body.id)) return;
+
+        console.log(`Creating audio layer for body ${body.id} (${body.type})`);
+        const layer = new SunLayer(this.context);
+        if (body.audioParams) {
+            layer.updateParams(body.audioParams);
+        }
+        layer.connect(this.masterGain);
+        this.layers.set(body.id, layer);
+    }
+
+    private removeLayerForBody(id: string) {
+        const layer = this.layers.get(id);
+        if (layer) {
+            console.log(`Removing audio layer for body ${id}`);
+            layer.dispose();
+            this.layers.delete(id);
+        }
+    }
+
+    public async instantiateBodyFromPreset(preset: Preset, position: { radius: number, angle: number }) {
+        const id = crypto.randomUUID();
+        const body: OrbitalBody = {
+            id,
+            type: preset.type === 'generator' ? 'planet' : 'moon',
+            presetId: preset.id,
+            position,
+            velocity: 0.2, // Default velocity
+            audioParams: preset.parameters,
+            audioLayerId: `layer-${id}`,
+            visualConfig: {
+                color: preset.type === 'generator' ? '#4169E1' : '#32CD32',
+                size: preset.type === 'generator' ? 20 : 10,
+                shaderUniforms: {}
+            }
+        };
+
+        // Add to manager, which triggers onBodyAdded -> createLayerForBody
+        await this.bodiesManager.addBody(body);
     }
 
     public updateSunParams(params: Partial<SunParameters>) {

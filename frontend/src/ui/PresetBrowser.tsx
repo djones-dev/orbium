@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useAudioEngine } from '../hooks/useAudioEngine';
-import { Preset, PresetCategory } from '../types/preset';
+import React, { useState, useMemo } from 'react';
+import { usePresets } from '../hooks/usePresets';
+import { PresetCategory } from '../types/preset';
+import { useUIStore } from '../stores/uiStore';
 import { PresetItem } from './PresetItem';
 import './PresetBrowser.css';
 
@@ -8,19 +9,13 @@ type SortField = 'name' | 'type' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
 export const PresetBrowser: React.FC = () => {
-    const { engine } = useAudioEngine();
+    const { presets: allPresets, loading, error, refetch, createPreset, deletePreset } = usePresets();
+    const showToast = useUIStore(state => state.showToast);
 
     // State
-    const [allPresets, setAllPresets] = useState<Preset[]>([]);
     const [activeCategory, setActiveCategory] = useState<PresetCategory | 'all'>('all');
     const [sortField, setSortField] = useState<SortField>('name');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-
-    // Load initial data
-    useEffect(() => {
-        const loaded = engine.presets.loadPresets();
-        setAllPresets(loaded);
-    }, [engine]);
 
     // Apply filtering and sorting
     const displayedPresets = useMemo(() => {
@@ -29,15 +24,15 @@ export const PresetBrowser: React.FC = () => {
             : allPresets.filter(p => p.category === activeCategory);
 
         return [...filtered].sort((a, b) => {
-            let valA: string | number;
-            let valB: string | number;
+            let valA: string | number | boolean;
+            let valB: string | number | boolean;
 
             if (sortField === 'createdAt') {
-                valA = a.metadata.createdAt;
-                valB = b.metadata.createdAt;
+                valA = a.created_at || '';
+                valB = b.created_at || '';
             } else {
-                valA = a[sortField];
-                valB = b[sortField];
+                valA = (a as any)[sortField];
+                valB = (b as any)[sortField];
             }
 
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
@@ -102,11 +97,50 @@ export const PresetBrowser: React.FC = () => {
                 {/* List Container */}
                 <div className="preset-list-container">
                     <div className="preset-list">
-                        {displayedPresets.length > 0 ? (
+                        {loading && displayedPresets.length === 0 ? (
+                            Array.from({ length: 12 }).map((_, i) => (
+                                <div key={i} className="preset-skeleton">
+                                    <div className="skeleton-icon" />
+                                    <div className="skeleton-name" />
+                                    <div className="skeleton-badge" />
+                                </div>
+                            ))
+                        ) : error && displayedPresets.length === 0 ? (
+                            <div className="preset-error-container">
+                                <span className="error-text">{error}</span>
+                                <button className="retry-btn" onClick={() => refetch()}>
+                                    RETRY CONNECTION
+                                </button>
+                            </div>
+                        ) : displayedPresets.length > 0 ? (
                             displayedPresets.map(preset => (
                                 <PresetItem
                                     key={preset.id}
                                     preset={preset}
+                                    onDelete={async (id) => {
+                                        try {
+                                            await deletePreset(id);
+                                            showToast('PRESET DELETED', 'success');
+                                        } catch (err: any) {
+                                            showToast(err.message || 'DELETE FAILED', 'error');
+                                        }
+                                    }}
+                                    onDuplicate={async (p) => {
+                                        try {
+                                            const result = await createPreset({
+                                                name: `${p.name} (COPY)`,
+                                                description: p.description,
+                                                category: p.category,
+                                                type: p.type,
+                                                parameters: p.parameters
+                                            });
+                                            showToast('PRESET DUPLICATED', 'success');
+                                            return result;
+                                        } catch (err: any) {
+                                            showToast(err.message || 'DUPLICATE FAILED', 'error');
+                                            throw err;
+                                        }
+                                    }}
                                 />
                             ))
                         ) : (

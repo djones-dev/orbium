@@ -1,82 +1,104 @@
-import { Preset, PresetCategory } from '../types/preset';
-import { DEFAULT_PRESETS } from './defaults';
+import { Preset, PresetCategory, PresetFilters } from '../types/preset';
+import { presetService } from '../services/PresetService';
 
 export class PresetManager {
     private presets: Preset[] = [];
-    private readonly storageKey = 'orbium_presets';
+    private isLoaded: boolean = false;
+    private offlineQueue: Array<() => Promise<any>> = [];
 
     constructor() {
         this.loadPresets();
+        this.setupNetworkListeners();
+    }
+
+    private setupNetworkListeners() {
+        if (typeof window !== 'undefined') {
+            window.addEventListener('online', () => this.processOfflineQueue());
+        }
+    }
+
+    private async processOfflineQueue() {
+        while (this.offlineQueue.length > 0) {
+            const action = this.offlineQueue.shift();
+            if (action) {
+                try {
+                    await action();
+                } catch (e) {
+                    console.error('Failed to process offline action', e);
+                }
+            }
+        }
     }
 
     /**
-     * Loads presets from localStorage or falls back to defaults.
+     * Loads presets from backend or falls back to cache.
      */
-    public loadPresets(): Preset[] {
-        if (typeof window === 'undefined') {
-            this.presets = [...DEFAULT_PRESETS];
+    public async loadPresets(filters?: PresetFilters): Promise<Preset[]> {
+        try {
+            this.presets = await presetService.fetchPresets(filters);
+            this.isLoaded = true;
             return this.presets;
+        } catch (e) {
+            console.error('Failed to load presets from service, using cache', e);
+            return this.presets; // Return cached presets if service fails (offline)
         }
-
-        const stored = localStorage.getItem(this.storageKey);
-        if (stored) {
-            try {
-                this.presets = JSON.parse(stored);
-            } catch (e) {
-                console.error('Failed to parse presets from localStorage', e);
-                this.presets = [...DEFAULT_PRESETS];
-            }
-        } else {
-            this.presets = [...DEFAULT_PRESETS];
-            this.saveToStorage();
-        }
-        return this.presets;
     }
 
     /**
      * Saves or updates a preset.
      */
-    public savePreset(preset: Preset): void {
-        const index = this.presets.findIndex(p => p.id === preset.id);
-        const now = Date.now();
+    public async savePreset(preset: Omit<Preset, 'id' | 'created_at' | 'updated_at'> | Preset): Promise<Preset> {
+        const isUpdate = 'id' in preset;
 
-        const updatedPreset: Preset = {
-            ...preset,
-            metadata: {
-                ...preset.metadata,
-                updatedAt: now
+        const action = async () => {
+            if (isUpdate) {
+                return await presetService.updatePreset((preset as Preset).id, preset as Partial<Preset>);
+            } else {
+                return await presetService.createPreset(preset);
             }
         };
 
-        if (index > -1) {
-            this.presets[index] = updatedPreset;
-        } else {
-            // New preset, ensure it has a createdAt if not provided
-            if (!updatedPreset.metadata.createdAt) {
-                updatedPreset.metadata.createdAt = now;
+        try {
+            const savedPreset = await action();
+            this.invalidateCache(savedPreset);
+            return savedPreset;
+        } catch (e) {
+            if (typeof window !== 'undefined' && !navigator.onLine) {
+                this.offlineQueue.push(action);
+                // For offline, we return the preset with a temporary ID if it's new
+                // but this is tricky without a real ID. 
+                // For now, let's just throw or handle as we can.
             }
-            this.presets.push(updatedPreset);
+            throw e;
         }
-        this.saveToStorage();
     }
 
     /**
      * Deletes a preset by ID.
      */
-    public deletePreset(id: string): void {
-        this.presets = this.presets.filter(p => p.id !== id);
-        this.saveToStorage();
+    public async deletePreset(id: string): Promise<void> {
+        const action = () => presetService.deletePreset(id);
+
+        try {
+            await action();
+            this.presets = this.presets.filter(p => p.id !== id);
+        } catch (e) {
+            if (typeof window !== 'undefined' && !navigator.onLine) {
+                this.offlineQueue.push(action);
+            }
+            throw e;
+        }
     }
 
     /**
-     * Filters presets by category.
+     * Filters presets by category (from cache).
      */
     public filterByCategory(category: PresetCategory | string): Preset[] {
         return this.presets.filter(p => p.category === category);
     }
 
     /**
-     * Sorts presets by a specific field.
+     * Sorts presets by a specific field (from cache).
      */
     public sortBy(field: 'name' | 'type' | 'createdAt', direction: 'asc' | 'desc'): Preset[] {
         return [...this.presets].sort((a, b) => {
@@ -84,8 +106,8 @@ export class PresetManager {
             let valB: string | number;
 
             if (field === 'createdAt') {
-                valA = a.metadata.createdAt;
-                valB = b.metadata.createdAt;
+                valA = a.created_at;
+                valB = b.created_at;
             } else {
                 valA = a[field];
                 valB = b[field];
@@ -98,23 +120,39 @@ export class PresetManager {
     }
 
     /**
-     * Retrieves a preset by its ID.
+     * Retrieves a preset by its ID (from cache).
      */
     public getPresetById(id: string): Preset | undefined {
         return this.presets.find(p => p.id === id);
     }
 
     /**
-     * Resets the entire library to defaults.
+     * Resets the entire library to defaults by fetching from backend.
      */
-    public resetToDefaults(): void {
-        this.presets = [...DEFAULT_PRESETS];
-        this.saveToStorage();
+    public async resetToDefaults(): Promise<Preset[]> {
+        try {
+            this.presets = await presetService.getDefaults();
+            return this.presets;
+        } catch (e) {
+            console.error('Failed to reset to defaults', e);
+            throw e;
+        }
     }
 
-    private saveToStorage(): void {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.presets));
+    private invalidateCache(updatedPreset: Preset) {
+        const index = this.presets.findIndex(p => p.id === updatedPreset.id);
+        if (index > -1) {
+            this.presets[index] = updatedPreset;
+        } else {
+            this.presets.push(updatedPreset);
         }
+    }
+
+    public getIsLoaded(): boolean {
+        return this.isLoaded;
+    }
+
+    public getCachedPresets(): Preset[] {
+        return this.presets;
     }
 }
