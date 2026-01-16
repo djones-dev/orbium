@@ -36,7 +36,7 @@ export class SunLayer implements AudioLayer {
     private subGain: GainNode;
 
     // Noise
-    private noiseNode: AudioBufferSourceNode;
+    private noiseNode: AudioNode;
     private noiseFilter: BiquadFilterNode;
     private noiseGain: GainNode;
 
@@ -119,22 +119,25 @@ export class SunLayer implements AudioLayer {
         this.osc3Gain.connect(this.masterMixGain);
         this.subGain.connect(this.masterMixGain);
 
-        // B. Noise Generator (Atmosphere)
-        // 5s Pink-ish Noise Buffer
-        const bufferSize = context.sampleRate * 5;
-        const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-        const data = buffer.getChannelData(0);
-        let lastOut = 0;
-        for (let i = 0; i < bufferSize; i++) {
-            const white = Math.random() * 2 - 1;
-            // Brown/Pink filter
-            data[i] = (lastOut + (0.02 * white)) / 1.02;
-            lastOut = data[i];
-            data[i] *= 3.5; // Gain compensation
+        // B. Noise Generator (AudioWorklet)
+        try {
+            // Default to Brown noise (color = 2)
+            // Default to Brown noise (color = 2)
+            const worklet = new AudioWorkletNode(context, 'noise-processor', {
+                parameterData: { color: 2.0 }
+            });
+
+            // Handle Worklet errors
+            worklet.onprocessorerror = (err: Event) => {
+                console.error('NoiseProcessor Error:', err);
+            };
+            this.noiseNode = worklet;
+        } catch (e) {
+            console.warn('SunLayer: Noise processor unavailable, noise disabled.', e);
+            // Fallback: Silent node
+            this.noiseNode = context.createGain();
+            (this.noiseNode as GainNode).gain.value = 0;
         }
-        this.noiseNode = context.createBufferSource();
-        this.noiseNode.buffer = buffer;
-        this.noiseNode.loop = true;
 
         this.noiseFilter = context.createBiquadFilter();
         this.noiseFilter.type = 'highpass'; // Remove mud
@@ -162,7 +165,7 @@ export class SunLayer implements AudioLayer {
         this.osc2.start(now);
         this.osc3.start(now);
         this.subOsc.start(now);
-        this.noiseNode.start(now);
+        // Noise runs automatically if worklet
         this.lfo.start(now);
     }
 
@@ -279,7 +282,7 @@ export class SunLayer implements AudioLayer {
         this.osc2.stop();
         this.osc3.stop();
         this.subOsc.stop();
-        this.noiseNode.stop();
+        this.noiseNode.disconnect();
         this.lfo.stop();
         this.disconnect();
     }

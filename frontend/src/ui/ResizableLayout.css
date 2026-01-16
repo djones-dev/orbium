@@ -1,0 +1,146 @@
+/* ResizableLayout.css */
+
+.resizable-layout-container {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  box-sizing: border-box;
+}
+
+.layout-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+}
+
+.left-column {
+  border-right: none;
+}
+
+.right-column {
+  flex: 1;
+}
+
+/* Pane Base Styles */
+.pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.pane-header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--color-border);
+  user-select: none;
+}
+
+.pane-header {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.pane-toggle {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 1.2rem;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pane-toggle:hover {
+  color: var(--color-accent-primary);
+  transform: scale(1.1);
+}
+
+.pane-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  /* Remove common padding that causes gaps */
+  padding: 0;
+}
+
+/* Individual Pane Overrides */
+.left-sidebar {
+  flex: 1;
+  background: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
+}
+
+.bottom-left-panel {
+  height: 200px;
+  flex-shrink: 0;
+  background: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border);
+}
+
+.main-view {
+  flex: 1;
+  background: #000;
+  /* Visualization background */
+}
+
+.bottom-panel {
+  height: 250px;
+  flex-shrink: 0;
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Drag Handle */
+.drag-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--color-border);
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.drag-handle:hover {
+  background: var(--color-accent-primary);
+}
+
+/* Custom Scrollbar to keep it clean */
+.pane-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.pane-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pane-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.pane-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}

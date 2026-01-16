@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { Sun } from './Sun';
+import { useAudioEngine } from '../hooks/useAudioEngine';
 
 /**
  * 3D visualization scene for Orbium
@@ -13,6 +14,9 @@ const Scene = () => {
     const cameraAngle = Math.PI / 6; // 30 degrees in radians
     const cameraY = Math.sin(cameraAngle) * cameraDistance;
     const cameraZ = Math.cos(cameraAngle) * cameraDistance;
+
+    const { engine } = useAudioEngine();
+    const sunBody = engine.bodiesManager.getBodies().find(b => b.type === 'sun');
 
     return (
         <div className="w-full h-full">
@@ -40,7 +44,7 @@ const Scene = () => {
                 />
 
                 {/* Shader-driven Sun */}
-                <Sun />
+                <Sun body={sunBody} />
 
                 {/* Placeholder Orbital Path - Terminal-style green ring */}
                 <mesh rotation={[-Math.PI / 2, 0, 0]}>

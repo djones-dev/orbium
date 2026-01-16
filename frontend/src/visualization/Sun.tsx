@@ -4,8 +4,10 @@ import * as THREE from 'three';
 import { useAudioEngine } from '../hooks/useAudioEngine';
 import vertexShader from './shaders/sun.vert?raw';
 import fragmentShader from './shaders/sun.frag?raw';
+import { OrbitalBody } from '../types/orbital';
+import { SunParameters } from '../types/audio';
 
-export const Sun: React.FC = () => {
+export const Sun: React.FC<{ body?: OrbitalBody }> = ({ body }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const { engine } = useAudioEngine();
@@ -31,7 +33,9 @@ export const Sun: React.FC = () => {
         if (materialRef.current) {
             materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
 
-            const params = engine.getSunParams();
+            // Use passed body params or fallback to engine if body not available yet
+            const params = body?.audioParams as SunParameters || engine.getSunParams();
+
             if (params) {
                 // Map raw audio params to Signal Core visuals
 
