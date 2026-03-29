@@ -1,5 +1,5 @@
 import React, { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useAudioEngine } from '../hooks/useAudioEngine';
 import vertexShader from './shaders/sun.vert?raw';
@@ -7,23 +7,25 @@ import fragmentShader from './shaders/sun.frag?raw';
 import { OrbitalBody } from '../types/orbital';
 import { SunParameters } from '../types/audio';
 import { useSelection } from '../contexts/SelectionContext';
+import { PhysicsSystem } from '../simulation/PhysicsSystem';
 
-export const Sun: React.FC<{ body?: OrbitalBody, id?: string }> = ({ body, id = 'sun-primary' }) => {
+export const Sun: React.FC<{ body?: OrbitalBody; id?: string }> = ({ body, id = 'sun-primary' }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const { engine } = useAudioEngine();
     const { selectedBodyId, select } = useSelection();
 
-    const bodyId = body?.id || id;
+    const bodyId = body?.id ?? id;
     const isSelected = selectedBodyId === bodyId;
+    const isOrbiting = body != null && body.type !== 'sun';
 
     const uniforms = useMemo(
         () => ({
             uTime: { value: 0 },
-            uBaseColor: { value: new THREE.Color('#3a0900') }, // Deep Red/Black Void
-            uSecondaryColor: { value: new THREE.Color('#ff3300') }, // Fiery Red/Orange
-            uGlowColor: { value: new THREE.Color('#ffcc00') }, // Golden Yellow/White
-            uNoiseScale: { value: 1.0 }, // Slightly lower base scale for larger flames
+            uBaseColor: { value: new THREE.Color('#3a0900') },
+            uSecondaryColor: { value: new THREE.Color('#ff3300') },
+            uGlowColor: { value: new THREE.Color('#ffcc00') },
+            uNoiseScale: { value: 1.0 },
             uDisplacementStrength: { value: 0.8 },
             uPulseSpeed: { value: 1.0 },
             uGlowIntensity: { value: 1.0 },
@@ -32,100 +34,83 @@ export const Sun: React.FC<{ body?: OrbitalBody, id?: string }> = ({ body, id = 
             uMouseInfluence: { value: 0.0 },
             uSelected: { value: 0.0 },
         }),
-        []
+        [],
     );
 
     useFrame((state) => {
-        if (meshRef.current) {
-            if (materialRef.current) {
-                materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-                materialRef.current.uniforms.uSelected.value = THREE.MathUtils.lerp(
-                    materialRef.current.uniforms.uSelected.value,
-                    isSelected ? 1.0 : 0.0,
-                    0.1
-                );
-            }
+        if (!meshRef.current) return;
 
-            // Orbital Movement for non-sun bodies
-            // Only update if playing
-            if (body && body.type !== 'sun' && engine?.context?.state === 'running') {
-                // Update angle based on velocity (rad/s)
-                // Note limits: mutating state directly for visual smoothness
-                // In a full physics engine this would be separate
-                const dt = state.clock.getDelta();
-                body.position.angle += (body.velocity || 0.1) * dt;
+        // --- Shader time & selection uniforms ---
+        if (materialRef.current) {
+            materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+            materialRef.current.uniforms.uSelected.value = THREE.MathUtils.lerp(
+                materialRef.current.uniforms.uSelected.value,
+                isSelected ? 1.0 : 0.0,
+                0.1,
+            );
+        }
 
-                const x = body.position.radius * Math.cos(body.position.angle);
-                const z = body.position.radius * Math.sin(body.position.angle);
+        // --- Orbital position (read from PhysicsSystem, no mutation here) ---
+        if (isOrbiting) {
+            const position = PhysicsSystem.getInstance().getPosition(bodyId);
+            if (position) {
+                const x = position.radius * Math.cos(position.angle);
+                const z = position.radius * Math.sin(position.angle);
                 meshRef.current.position.set(x, 0, z);
             }
+        }
 
-            // Use passed body params or fallback to engine if body not available yet
-            const rawParams = body?.audioParams || engine.getSunParams();
+        // --- Audio-reactive shader uniforms ---
+        const rawParams = body?.audioParams ?? engine.getSunParams();
+        const params: SunParameters = {
+            rootFrequency: 60,
+            filterCutoff: 5000,
+            filterResonance: 1.0,
+            detuneSpread: 10,
+            lfoRate: 0.5,
+            distortion: 0,
+            gainLevel: -6,
+            waveform: 'sine',
+            noiseEnabled: false,
+            noiseVol: -20,
+            subEnabled: true,
+            subVol: -10,
+            ...rawParams,
+        };
 
-            // Apply defaults to ensure we don't pass undefined to math functions
-            const params: SunParameters = {
-                rootFrequency: 60,
-                filterCutoff: 5000,
-                detuneSpread: 10,
-                lfoRate: 0.5,
-                distortion: 0,
-                gainLevel: -6,
-                waveform: 'sine',
-                noiseEnabled: false,
-                noiseVol: -20,
-                subEnabled: true,
-                subVol: -10,
-                // Override with rawParams, but we need to ensure rawParams doesn't introduce undefineds for required fields?
-                // The spread ...rawParams will overwrite with undefined if the field exists but is undefined.
-                // Actually, Partial<SunParameters> can have undefineds.
-                // We should careful-merge or simple spread is usually fine if the source properties are missing, but if they are explicitly undefined, it might be an issue.
-                // However, Preset params usually just lack keys.
-                ...rawParams
-            } as SunParameters; // assertions sometimes needed if rawParams has optional fields that we want to treat as required after default.
+        if (materialRef.current) {
+            const cutoff = Math.max(20, params.filterCutoff);
+            const logCutoff = Math.log10(cutoff);
+            const scale = 0.5 + ((logCutoff - 1.3) / 2.7) * 2.5;
 
-            if (params && materialRef.current) {
-                // Map raw audio params to Signal Core visuals
+            const distortionFactor = (params.distortion ?? 0) / 100;
+            materialRef.current.uniforms.uNoiseScale.value = scale + distortionFactor * 1.5;
 
-                // 1. Cutoff (Hz) -> Noise Scale (Density)
-                // Safe guard against 0 or negative cutoff for log
-                const cutoff = Math.max(20, params.filterCutoff);
-                const logCutoff = Math.log10(cutoff);
-                const scale = 0.5 + ((logCutoff - 1.3) / 2.7) * 2.5;
+            const baseDisplace = 0.1 + (params.detuneSpread / 50) * 2.4;
+            materialRef.current.uniforms.uDisplacementStrength.value =
+                baseDisplace + distortionFactor * 2.0;
 
-                // Distortion adds grit/density to noise
-                const distortionFactor = (params.distortion || 0) / 100;
-                materialRef.current.uniforms.uNoiseScale.value = scale + (distortionFactor * 1.5);
+            materialRef.current.uniforms.uPulseSpeed.value =
+                0.2 + (params.lfoRate / 20) * 4.8 + distortionFactor * 3.0;
 
-                // 2. Spread (Cents) -> Displacement (Spike Height)
-                const baseDisplace = 0.1 + (params.detuneSpread / 50) * 2.4;
-                // Distortion boosts displacement significantly (explosive)
-                materialRef.current.uniforms.uDisplacementStrength.value = baseDisplace + (distortionFactor * 2.0);
-
-                // 3. LFO Rate (Hz) -> Pulse Speed
-                // Distortion makes it pulse faster (chaos)
-                materialRef.current.uniforms.uPulseSpeed.value = (0.2 + (params.lfoRate / 20) * 4.8) + (distortionFactor * 3.0);
-
-                // 4. Gain (dB) -> Glow Intensity
-                const linearGain = Math.pow(10, params.gainLevel / 20);
-                materialRef.current.uniforms.uGlowIntensity.value = linearGain * 2.0;
-            }
+            const linearGain = Math.pow(10, params.gainLevel / 20);
+            materialRef.current.uniforms.uGlowIntensity.value = linearGain * 2.0;
         }
     });
 
-    const handleClick = (e: any) => {
+    const handleClick = (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
         select(bodyId);
     };
 
-    // Initial position
-    const initialPos = useMemo(() => {
+    const initialPos = useMemo((): [number, number, number] => {
         if (body && body.type !== 'sun') {
             const x = body.position.radius * Math.cos(body.position.angle);
             const z = body.position.radius * Math.sin(body.position.angle);
-            return [x, 0, z] as [number, number, number];
+            return [x, 0, z];
         }
-        return [0, 0, 0] as [number, number, number];
+        return [0, 0, 0];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -142,7 +127,7 @@ export const Sun: React.FC<{ body?: OrbitalBody, id?: string }> = ({ body, id = 
                 vertexShader={vertexShader}
                 fragmentShader={fragmentShader}
                 uniforms={uniforms}
-                transparent={true}
+                transparent
                 side={THREE.DoubleSide}
             />
         </mesh>
