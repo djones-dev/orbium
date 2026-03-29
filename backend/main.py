@@ -1,17 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 import os
 from contextlib import asynccontextmanager
 
-from db.session import init_db, SessionLocal
+from db.session import SessionLocal
 from db.seeds.default_presets import seed_defaults
-from routes import presets
+from routes import presets, bodies
+
+
+def run_migrations() -> None:
+    """Apply any pending Alembic migrations at startup."""
+    from alembic.config import Config
+    from alembic import command
+
+    cfg = Config("alembic.ini")
+    command.upgrade(cfg, "head")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database
-    init_db()
-    # Seed defaults
+    run_migrations()
     db = SessionLocal()
     try:
         seed_defaults(db)
@@ -19,14 +28,10 @@ async def lifespan(app: FastAPI):
         db.close()
     yield
 
+
 app = FastAPI(title="Orbium API", version="1.0.0", lifespan=lifespan)
 
-# CORS configuration
-origins = [
-    "http://localhost",
-    "http://localhost:5173",
-    "http://localhost:8080",
-]
+origins = os.getenv("CORS_ORIGINS", "http://localhost,http://localhost:5173,http://localhost:8080").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,17 +42,25 @@ app.add_middleware(
 )
 
 app.include_router(presets.router)
-from routes import bodies
 app.include_router(bodies.router)
 
 
 @app.get("/api/health")
 async def health_check():
+    db_status = "healthy"
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+    except Exception as exc:
+        db_status = f"unhealthy: {exc}"
+
     return {
-        "status": "ok", 
+        "status": "ok" if db_status == "healthy" else "degraded",
         "service": "orbium-backend",
-        "database_url": os.getenv("DATABASE_URL", "not_set")[:15] + "..." # Masked for safety
+        "database": db_status,
     }
+
 
 if __name__ == "__main__":
     import uvicorn
