@@ -9,6 +9,13 @@ import { useThree } from '@react-three/fiber';
 import { presetService } from '../services/PresetService';
 import { useUIStore } from '../stores/uiStore';
 import { OrbitalBody } from '../types/orbital';
+import { usePhysicsLoop } from '../hooks/usePhysicsLoop';
+
+/** Drives the PhysicsSystem forward each frame. Must live inside the Canvas. */
+const PhysicsUpdater = () => {
+    usePhysicsLoop();
+    return null;
+};
 
 /**
  * Internal component for handling drag and drop interaction within the 3D scene
@@ -240,6 +247,7 @@ const Scene = () => {
                 />
 
                 <DragDropHandler />
+                <PhysicsUpdater />
             </Canvas>
         </div>
     );
