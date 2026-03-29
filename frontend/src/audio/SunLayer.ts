@@ -55,7 +55,8 @@ export class SunLayer implements AudioLayer {
         noiseVol: -40, // Default quiet
         subVol: -12,
         noiseEnabled: true,
-        subEnabled: true
+        subEnabled: true,
+        filterResonance: 1.0
     };
 
     constructor(context: AudioContext) {
@@ -228,6 +229,7 @@ export class SunLayer implements AudioLayer {
 
         // 4. Filter
         this.filter.frequency.setTargetAtTime(filterCutoff, now, rampTime);
+        this.filter.Q.setTargetAtTime(this.params.filterResonance || 0, now, rampTime);
 
         // 5. LFO
         this.lfo.frequency.setTargetAtTime(lfoRate, now, rampTime);

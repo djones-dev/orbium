@@ -3,6 +3,7 @@ import './ResizableLayout.css';
 import { SelectedBodyInfo } from './SelectedBodyInfo';
 
 import { PresetBrowser } from './PresetBrowser';
+import { ParameterEditor } from './ParameterEditor';
 import { useUIStore } from '../stores/uiStore';
 
 interface ResizableLayoutProps {
@@ -151,7 +152,7 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                 {bottomVisible && (
                     <div className="pane bottom-panel">
                         <div className="pane-header-container">
-                            <h2 className="pane-header">Bottom Panel</h2>
+                            <h2 className="pane-header">PARAMETERS</h2>
                             <button
                                 className="pane-toggle"
                                 onClick={() => setBottomVisible(false)}
@@ -160,8 +161,8 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                                 －
                             </button>
                         </div>
-                        <div className="pane-content">
-                            {/* Panel content here */}
+                        <div className="pane-content p-0 overflow-hidden">
+                            <ParameterEditor />
                         </div>
                     </div>
                 )}
