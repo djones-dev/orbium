@@ -25,7 +25,8 @@ export const SunPanel: React.FC = () => {
         noiseVol: -40,
         subVol: -12,
         noiseEnabled: true,
-        subEnabled: true
+        subEnabled: true,
+        filterResonance: 1.0,
     });
 
     // UI State
