@@ -16,7 +16,12 @@ export interface SunParameters {
 }
 
 export interface AudioLayer {
+    readonly id: string;
+    readonly type: string;
     connect(destination: AudioNode): void;
     disconnect(): void;
     setVolume(value: number): void;
+    updateParams(params: Partial<SunParameters>): void;
+    getParams(): SunParameters;
+    dispose(): void;
 }
