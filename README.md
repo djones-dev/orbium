@@ -1,12 +1,24 @@
 <a id="readme-top"></a>
 
 [![Contributors][contributors-shield]][contributors-url] [![Issues][issues-shield]][issues-url] [![Forks][forks-shield]][forks-url] [![LinkedIn][linkedin-shield]][linkedin-url]
+<!-- [![Stargazers][stars-shield]][stars-url] -->
 
+<!-- PROJECT LOGO -->
+<!-- <br /> -->
 <div align="center">
+  <!-- <a href="https://github.com/djones-dev/orbium">
+    <img src="images/logo.png" alt="Logo" width="80" height="80">
+  </a> -->
+
   <h3 align="center">Orbium</h3>
+
   <p align="center">
     A browser-based generative ambient synthesizer driven by orbital mechanics.
     <br />
+    <!-- <a href="https://github.com/djones-dev/orbium"><strong>Explore the docs »</strong></a> -->
+    <!-- <br /> -->
+    <br />
+    <!-- <a href="https://demo.orbium.app">View Demo</a> -->
     <a href="https://github.com/djones-dev/orbium/issues">Report Bug</a>
     &middot;
     <a href="https://github.com/djones-dev/orbium/issues">Request Feature</a>
@@ -242,3 +254,12 @@ Project: [https://github.com/djones-dev/orbium](https://github.com/djones-dev/or
 [issues-url]: https://github.com/djones-dev/orbium/issues
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://www.linkedin.com/in/daniel-jones-ba6325337
+[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
+[React-url]: https://reactjs.org/
+[Three.js]: https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=three.js&logoColor=white
+[Three-url]: https://threejs.org/
+[TypeScript]: https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white
+[TypeScript-url]: https://www.typescriptlang.org/
+[Vite]: https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white
+[Vite-url]: https://vitejs.dev/
+****
