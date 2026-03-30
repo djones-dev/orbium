@@ -5,19 +5,14 @@ import {
     BodyTriggerFiredEvent,
 } from '../events/SimulationEvents';
 import { SimPosition, SimulationBody } from './types';
+import { World } from '../ecs/World';
+import { ComponentType } from '../ecs/components/Component';
+import { PhysicsComponent } from '../ecs/components/PhysicsComponent';
 
 const TWO_PI = Math.PI * 2;
 
 /**
  * PhysicsSystem — owns all simulation state; completely independent of React.
- *
- * Uses a fixed timestep accumulator (60 Hz) to ensure stable integration
- * regardless of the render frame rate.  The render layer reads positions via
- * `getPosition()` each frame rather than subscribing to per-frame events,
- * keeping the hot path allocation-free.
- *
- * Trigger events (`BODY_TRIGGER_FIRED`) are emitted whenever a body crosses
- * its trigger angle during integration.
  */
 export class PhysicsSystem {
     private static instance: PhysicsSystem;
@@ -93,8 +88,42 @@ export class PhysicsSystem {
     }
 
     private integrate(dt: number): void {
+        const world = World.getInstance();
+        const em = world.entities;
+
         for (const body of this.bodies.values()) {
             if (!body.active) continue;
+
+            // Apply ECS forces if present
+            const physComp = em.getComponent<PhysicsComponent>(body.id, ComponentType.Physics);
+            if (physComp) {
+                // Sum forces
+                let fx = 0;
+                let fz = 0;
+                for (const f of physComp.forces) {
+                    fx += f.x;
+                    fz += f.y;
+                }
+
+                if (physComp.forces.length > 0) {
+                    // Convert Cartesian force to tangential acceleration
+                    // Ft = -Fx * sin(a) + Fz * cos(a)
+                    const tangentialForce = -fx * Math.sin(body.position.angle) + fz * Math.cos(body.position.angle);
+                    
+                    // a_tangential = F / m
+                    // alpha = a_tangential / r
+                    const radius = Math.max(0.1, body.position.radius); // Avoid division by zero
+                    const angularAcceleration = tangentialForce / (physComp.mass * radius);
+                    
+                    body.velocity.angular += angularAcceleration * dt;
+                    
+                    // Clear forces
+                    physComp.forces = [];
+                }
+
+                // Apply damping
+                body.velocity.angular *= Math.pow(physComp.damping, dt * 60);
+            }
 
             const prevAngle = body.position.angle;
             body.position.angle += body.velocity.angular * dt;
