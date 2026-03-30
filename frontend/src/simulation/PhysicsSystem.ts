@@ -8,6 +8,7 @@ import { SimPosition, SimulationBody } from './types';
 import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/components/Component';
 import { PhysicsComponent } from '../ecs/components/PhysicsComponent';
+import { PositionComponent } from '../ecs/components/PositionComponent';
 
 const TWO_PI = Math.PI * 2;
 
@@ -91,8 +92,60 @@ export class PhysicsSystem {
         const world = World.getInstance();
         const em = world.entities;
 
+        const ENABLE_GRAVITY = true; // Phase 5c
+        const G = 0.001;
+
+        const bodyIds = this.getBodyIds();
+        // Include the sun in gravity calculations even though it's not in this.bodies
+        if (em.hasEntity('sun-primary')) {
+            bodyIds.push('sun-primary');
+        }
+
+        // 1. Calculate Gravity Forces
+        if (ENABLE_GRAVITY) {
+            for (let i = 0; i < bodyIds.length; i++) {
+                for (let j = i + 1; j < bodyIds.length; j++) {
+                    const idA = bodyIds[i];
+                    const idB = bodyIds[j];
+
+                    const physA = em.getComponent<PhysicsComponent>(idA, ComponentType.Physics);
+                    const physB = em.getComponent<PhysicsComponent>(idB, ComponentType.Physics);
+                    const posA = em.getComponent<PositionComponent>(idA, ComponentType.Position);
+                    const posB = em.getComponent<PositionComponent>(idB, ComponentType.Position);
+
+                    if (!physA || !physB || !posA || !posB) continue;
+
+                    // Convert polar to Cartesian for distance and direction
+                    const x1 = posA.radius * Math.cos(posA.angle);
+                    const z1 = posA.radius * Math.sin(posA.angle);
+                    const x2 = posB.radius * Math.cos(posB.angle);
+                    const z2 = posB.radius * Math.sin(posB.angle);
+
+                    const dx = x2 - x1;
+                    const dz = z2 - z1;
+                    const distSq = dx * dx + dz * dz;
+                    const dist = Math.sqrt(distSq);
+
+                    if (dist < 0.1) continue; // Avoid singularity
+
+                    // F = G * m1 * m2 / r^2
+                    const forceMag = (G * physA.mass * physB.mass) / distSq;
+
+                    // Direction vector
+                    const nx = dx / dist;
+                    const nz = dz / dist;
+
+                    // Accumulate forces
+                    physA.forces.push({ x: nx * forceMag, y: nz * forceMag });
+                    physB.forces.push({ x: -nx * forceMag, y: -nz * forceMag });
+                }
+            }
+        }
+
+        // 2. Apply Forces and Integrate
         for (const body of this.bodies.values()) {
             if (!body.active) continue;
+    ...
 
             // Apply ECS forces if present
             const physComp = em.getComponent<PhysicsComponent>(body.id, ComponentType.Physics);
