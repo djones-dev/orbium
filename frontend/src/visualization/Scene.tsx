@@ -10,6 +10,11 @@ import { presetService } from '../services/PresetService';
 import { useUIStore } from '../stores/uiStore';
 import { OrbitalBody } from '../types/orbital';
 import { usePhysicsLoop } from '../hooks/usePhysicsLoop';
+import { World } from '../ecs/World';
+import { ComponentType } from '../ecs/components/Component';
+import { PositionComponent } from '../ecs/components/PositionComponent';
+import { AudioEventType } from '../events/AudioEvents';
+import { EventBus } from '../events/EventBus';
 
 /** Drives the PhysicsSystem forward each frame. Must live inside the Canvas. */
 const PhysicsUpdater = () => {
@@ -78,18 +83,22 @@ const DragDropHandler = () => {
                 const radius = Math.sqrt(target.x ** 2 + target.z ** 2);
                 const angle = Math.atan2(target.z, target.x);
 
-                // Check Overlaps
-                const bodies = engine.bodiesManager.getBodies();
-                let parentBody: OrbitalBody | undefined;
+                // Check Overlaps via ECS
+                const world = World.getInstance();
+                const entityIds = world.entities.query(ComponentType.Position);
+                let parentId: string | undefined;
 
                 // Simple overlap check (radius < 2 units)
-                for (const b of bodies) {
-                    if (b.type !== 'sun') {
-                        const bx = b.position.radius * Math.cos(b.position.angle);
-                        const bz = b.position.radius * Math.sin(b.position.angle);
+                for (const id of entityIds) {
+                    if (id !== 'sun-primary') {
+                        const pos = world.entities.getComponent<PositionComponent>(id, ComponentType.Position);
+                        if (!pos) continue;
+
+                        const bx = pos.radius * Math.cos(pos.angle);
+                        const bz = pos.radius * Math.sin(pos.angle);
                         const dist = Math.sqrt((target.x - bx) ** 2 + (target.z - bz) ** 2);
                         if (dist < 2.0) {
-                            parentBody = b;
+                            parentId = id;
                             break;
                         }
                     }
@@ -100,9 +109,9 @@ const DragDropHandler = () => {
                     if (!preset) return;
 
                     // Decision: Generator vs Modulator
-                    if (preset.type === 'modulator' || (preset.type === 'effect' && parentBody)) {
+                    if (preset.type === 'modulator' || (preset.type === 'effect' && parentId)) {
                         // Must drop on parent
-                        if (!parentBody) {
+                        if (!parentId) {
                             showToast('Modulators must be dropped on a planet', 'error');
                             return;
                         }
@@ -121,7 +130,7 @@ const DragDropHandler = () => {
                                 size: 8,
                                 shaderUniforms: {}
                             },
-                            parentId: parentBody.id
+                            parentId: parentId
                         };
                         await engine.bodiesManager.addBody(body);
                         showToast('MOON CREATED', 'success');
@@ -129,9 +138,6 @@ const DragDropHandler = () => {
                     } else if (preset.type === 'generator') {
                         await engine.instantiateBodyFromPreset(preset, { radius, angle });
                         showToast('PLANET CREATED', 'success');
-                    } else {
-                        // Effect on sun? or unknown
-                        console.log(`Dropped ${preset.type} (Not fully implemented)`);
                     }
                 } catch (err) {
                     console.error(err);
@@ -161,8 +167,6 @@ const DragDropHandler = () => {
 
 /**
  * 3D visualization scene for Orbium
- * Phase 2: Sun Shader and Audio Integration
- * Camera positioned at 30° above the orbital plane as per design spec
  */
 const Scene = () => {
     // Calculate camera position: 30° above orbital plane, distance 15
@@ -171,20 +175,39 @@ const Scene = () => {
     const cameraY = Math.sin(cameraAngle) * cameraDistance;
     const cameraZ = Math.cos(cameraAngle) * cameraDistance;
 
-    const { engine } = useAudioEngine();
-    const { selectedBody } = useSelection();
-    const [bodies, setBodies] = useState<OrbitalBody[]>([]);
+    const { selectedBodyId } = useSelection();
+    const [renderData, setRenderData] = useState<string[]>([]);
 
     useEffect(() => {
-        // Initial load
-        setBodies(engine.bodiesManager.getBodies());
+        const world = World.getInstance();
+        const bus = EventBus.getInstance();
 
-        // Subscribe to changes
-        const unsubscribe = engine.bodiesManager.subscribe(() => {
-            setBodies([...engine.bodiesManager.getBodies()]);
-        });
-        return () => { unsubscribe(); };
-    }, [engine]);
+        const updateRenderData = () => {
+            // We only need the IDs for mapping to <Sun /> components
+            // RenderSystem handles the x/z projection inside Sun's useFrame (via PhysicsSystem)
+            const ids = world.entities.query(ComponentType.Position, ComponentType.Visual);
+            setRenderData([...ids]);
+        };
+
+        // Initial load
+        updateRenderData();
+
+        // Subscribe to body lifecycle events
+        const unsubAdd = bus.on(AudioEventType.BODY_ADDED, updateRenderData);
+        const unsubRem = bus.on(AudioEventType.BODY_REMOVED, updateRenderData);
+
+        return () => { 
+            unsubAdd();
+            unsubRem();
+        };
+    }, []);
+
+    // Helper to get selected body position for the orbit ring
+    const selectedBodyPos = useMemo(() => {
+        if (!selectedBodyId) return null;
+        const world = World.getInstance();
+        return world.entities.getComponent<PositionComponent>(selectedBodyId, ComponentType.Position);
+    }, [selectedBodyId]);
 
     return (
         <div className="w-full h-full">
@@ -212,14 +235,14 @@ const Scene = () => {
                 />
 
                 {/* Render All Bodies */}
-                {bodies.map(body => (
-                    <Sun key={body.id} body={body} id={body.id} />
+                {renderData.map(id => (
+                    <Sun key={id} id={id} />
                 ))}
 
                 {/* Selected Body Orbit Path */}
-                {selectedBody && selectedBody.position.radius > 0 && (
+                {selectedBodyPos && selectedBodyPos.radius > 0 && (
                     <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                        <ringGeometry args={[selectedBody.position.radius - 0.05, selectedBody.position.radius + 0.05, 128]} />
+                        <ringGeometry args={[selectedBodyPos.radius - 0.05, selectedBodyPos.radius + 0.05, 128]} />
                         <meshBasicMaterial
                             color="#33ff33"
                             opacity={0.25}

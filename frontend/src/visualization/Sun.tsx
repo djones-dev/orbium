@@ -1,23 +1,22 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useAudioEngine } from '../hooks/useAudioEngine';
 import vertexShader from './shaders/sun.vert?raw';
 import fragmentShader from './shaders/sun.frag?raw';
-import { OrbitalBody } from '../types/orbital';
 import { SunParameters } from '../types/audio';
 import { useSelection } from '../contexts/SelectionContext';
 import { PhysicsSystem } from '../simulation/PhysicsSystem';
+import { World } from '../ecs/World';
+import { ComponentType } from '../ecs/components/Component';
+import { AudioComponent } from '../ecs/components/AudioComponent';
 
-export const Sun: React.FC<{ body?: OrbitalBody; id?: string }> = ({ body, id = 'sun-primary' }) => {
+export const Sun: React.FC<{ id: string }> = ({ id }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
-    const { engine } = useAudioEngine();
     const { selectedBodyId, select } = useSelection();
 
-    const bodyId = body?.id ?? id;
-    const isSelected = selectedBodyId === bodyId;
-    const isOrbiting = body != null && body.type !== 'sun';
+    const isSelected = selectedBodyId === id;
+    const isOrbiting = id !== 'sun-primary';
 
     const uniforms = useMemo(
         () => ({
@@ -39,6 +38,7 @@ export const Sun: React.FC<{ body?: OrbitalBody; id?: string }> = ({ body, id = 
 
     useFrame((state) => {
         if (!meshRef.current) return;
+        const world = World.getInstance();
 
         // --- Shader time & selection uniforms ---
         if (materialRef.current) {
@@ -50,9 +50,9 @@ export const Sun: React.FC<{ body?: OrbitalBody; id?: string }> = ({ body, id = 
             );
         }
 
-        // --- Orbital position (read from PhysicsSystem, no mutation here) ---
+        // --- Orbital position (read from PhysicsSystem) ---
         if (isOrbiting) {
-            const position = PhysicsSystem.getInstance().getPosition(bodyId);
+            const position = PhysicsSystem.getInstance().getPosition(id);
             if (position) {
                 const x = position.radius * Math.cos(position.angle);
                 const z = position.radius * Math.sin(position.angle);
@@ -60,8 +60,10 @@ export const Sun: React.FC<{ body?: OrbitalBody; id?: string }> = ({ body, id = 
             }
         }
 
-        // --- Audio-reactive shader uniforms ---
-        const rawParams = body?.audioParams ?? engine.getSunParams();
+        // --- Audio-reactive shader uniforms (read from ECS) ---
+        const audio = world.entities.getComponent<AudioComponent>(id, ComponentType.Audio);
+        if (!audio) return;
+
         const params: SunParameters = {
             rootFrequency: 60,
             filterCutoff: 5000,
@@ -75,7 +77,7 @@ export const Sun: React.FC<{ body?: OrbitalBody; id?: string }> = ({ body, id = 
             noiseVol: -20,
             subEnabled: true,
             subVol: -10,
-            ...rawParams,
+            ...audio.parameters,
         };
 
         if (materialRef.current) {
@@ -100,23 +102,12 @@ export const Sun: React.FC<{ body?: OrbitalBody; id?: string }> = ({ body, id = 
 
     const handleClick = (e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation();
-        select(bodyId);
+        select(id);
     };
-
-    const initialPos = useMemo((): [number, number, number] => {
-        if (body && body.type !== 'sun') {
-            const x = body.position.radius * Math.cos(body.position.angle);
-            const z = body.position.radius * Math.sin(body.position.angle);
-            return [x, 0, z];
-        }
-        return [0, 0, 0];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     return (
         <mesh
             ref={meshRef}
-            position={initialPos}
             onClick={handleClick}
             onPointerOver={() => (document.body.style.cursor = 'pointer')}
             onPointerOut={() => (document.body.style.cursor = 'auto')}

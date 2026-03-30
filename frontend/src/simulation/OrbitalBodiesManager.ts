@@ -10,13 +10,19 @@ import {
 } from '../events/AudioEvents';
 import { SimulationEventType, BodiesLoadedEvent } from '../events/SimulationEvents';
 import { World } from '../ecs/World';
-import { OrbitalBodiesAdapter } from './OrbitalBodiesAdapter';
+import { ComponentType } from '../ecs/components/Component';
+import { createPositionComponent, PositionComponent } from '../ecs/components/PositionComponent';
+import { createVelocityComponent, VelocityComponent } from '../ecs/components/VelocityComponent';
+import { createAudioComponent, AudioComponent } from '../ecs/components/AudioComponent';
+import { createVisualComponent, VisualComponent } from '../ecs/components/VisualComponent';
+import { createHierarchyComponent, HierarchyComponent } from '../ecs/components/HierarchyComponent';
+import { createPresetComponent, PresetComponent } from '../ecs/components/PresetComponent';
+import { createPhysicsComponent } from '../ecs/components/PhysicsComponent';
+import { createColliderComponent } from '../ecs/components/ColliderComponent';
 
 export class OrbitalBodiesManager {
-    private bodies: OrbitalBody[] = [];
     private listeners = new Set<() => void>();
     private bus = EventBus.getInstance();
-    private adapter = new OrbitalBodiesAdapter(World.getInstance());
 
     subscribe(listener: () => void): () => void {
         this.listeners.add(listener);
@@ -30,18 +36,15 @@ export class OrbitalBodiesManager {
     async loadFromBackend(): Promise<void> {
         try {
             const savedBodies = await bodyService.getBodies();
-            const localBodies = this.bodies.filter(b => b.id === 'sun-primary');
-            this.bodies = [...localBodies, ...savedBodies];
-
-            // Sync restored bodies into the ECS World (no BODY_ADDED events —
-            // this is a restore, not a user-initiated add).
-            for (const body of this.bodies) {
-                this.adapter.addEntity(body);
+            
+            // Sync restored bodies into the ECS World
+            for (const body of savedBodies) {
+                this.addEntityToECS(body);
             }
 
             this.notify();
             this.bus.emit<BodiesLoadedEvent>(SimulationEventType.BODIES_LOADED, {
-                count: this.bodies.length,
+                count: savedBodies.length,
             });
         } catch (error) {
             console.error('Failed to load bodies from backend:', error);
@@ -49,18 +52,13 @@ export class OrbitalBodiesManager {
     }
 
     async addBody(body: OrbitalBody, sync: boolean = true): Promise<void> {
-        this.bodies.push(body);
-        this.adapter.addEntity(body);
+        this.addEntityToECS(body);
         this.bus.emit<BodyAddedEvent>(AudioEventType.BODY_ADDED, { body });
         this.notify();
 
-        if (sync) {
+        if (sync && body.id !== 'sun-primary') {
             try {
-                const savedBody = await bodyService.createBody(body);
-                const index = this.bodies.findIndex(b => b.id === body.id);
-                if (index !== -1) {
-                    this.bodies[index] = savedBody;
-                }
+                await bodyService.createBody(body);
             } catch (error) {
                 console.error('Failed to sync body creation:', error);
                 this.removeBody(body.id, false);
@@ -70,12 +68,11 @@ export class OrbitalBodiesManager {
     }
 
     async removeBody(id: string, sync: boolean = true): Promise<void> {
-        this.bodies = this.bodies.filter(b => b.id !== id);
-        this.adapter.removeEntity(id);
+        this.removeEntityFromECS(id);
         this.bus.emit<BodyRemovedEvent>(AudioEventType.BODY_REMOVED, { id });
         this.notify();
 
-        if (sync) {
+        if (sync && id !== 'sun-primary') {
             try {
                 await bodyService.deleteBody(id);
             } catch (error) {
@@ -89,14 +86,14 @@ export class OrbitalBodiesManager {
         params: Partial<SunParameters>,
         sync: boolean = true,
     ): Promise<void> {
-        const body = this.getBodyById(id);
-        if (!body) return;
+        const audio = World.getInstance().entities.getComponent<AudioComponent>(id, ComponentType.Audio);
+        if (!audio) return;
 
-        body.audioParams = { ...body.audioParams, ...params };
-        this.adapter.updateAudioParams(id, params);
+        audio.parameters = { ...audio.parameters, ...params };
         this.bus.emit<ParamsChangedEvent>(AudioEventType.PARAMS_CHANGED, { id, params });
+        this.notify();
 
-        if (sync) {
+        if (sync && id !== 'sun-primary') {
             try {
                 await bodyService.updateBody(id, params);
             } catch (error) {
@@ -106,8 +103,6 @@ export class OrbitalBodiesManager {
     }
 
     async addAttribute(bodyId: string, attributePresetId: string): Promise<void> {
-        const body = this.getBodyById(bodyId);
-        if (!body) return;
         try {
             await bodyService.addAttribute(bodyId, { preset_id: attributePresetId });
         } catch (error) {
@@ -116,10 +111,72 @@ export class OrbitalBodiesManager {
     }
 
     getBodyById(id: string): OrbitalBody | undefined {
-        return this.bodies.find(b => b.id === id);
+        return this.toOrbitalBody(id);
     }
 
     getBodies(): OrbitalBody[] {
-        return this.bodies;
+        const world = World.getInstance();
+        const ids = world.entities.query(ComponentType.Position, ComponentType.Audio);
+        return ids.map(id => this.toOrbitalBody(id)).filter((b): b is OrbitalBody => b !== undefined);
+    }
+
+    // --- ECS Bridge Methods (Inlined from Adapter) ---
+
+    private addEntityToECS(body: OrbitalBody): void {
+        const em = World.getInstance().entities;
+
+        if (!em.hasEntity(body.id)) {
+            em.createEntity(body.id);
+        }
+
+        em.addComponent(body.id, createPositionComponent(body.position.radius, body.position.angle));
+        em.addComponent(body.id, createVelocityComponent(body.velocity ?? 0));
+        em.addComponent(body.id, createAudioComponent(body.audioLayerId, body.audioParams));
+        em.addComponent(
+            body.id,
+            createVisualComponent(
+                body.visualConfig.color,
+                body.visualConfig.size,
+                body.visualConfig.shaderUniforms as Record<string, unknown>,
+            ),
+        );
+        em.addComponent(body.id, createHierarchyComponent(body.parentId ?? null));
+        em.addComponent(body.id, createPresetComponent(body.type, body.presetId));
+        em.addComponent(body.id, createPhysicsComponent(1, 0.999));
+        em.addComponent(body.id, createColliderComponent(body.visualConfig.size));
+    }
+
+    private removeEntityFromECS(id: string): void {
+        World.getInstance().entities.destroyEntity(id);
+    }
+
+    private toOrbitalBody(id: string): OrbitalBody | undefined {
+        const em = World.getInstance().entities;
+        if (!em.hasEntity(id)) return undefined;
+
+        const pos = em.getComponent<PositionComponent>(id, ComponentType.Position);
+        const vel = em.getComponent<VelocityComponent>(id, ComponentType.Velocity);
+        const audio = em.getComponent<AudioComponent>(id, ComponentType.Audio);
+        const visual = em.getComponent<VisualComponent>(id, ComponentType.Visual);
+        const hierarchy = em.getComponent<HierarchyComponent>(id, ComponentType.Hierarchy);
+        const preset = em.getComponent<PresetComponent>(id, ComponentType.Preset);
+
+        if (!pos || !audio || !visual) return undefined;
+
+        return {
+            id,
+            type: preset?.bodyType ?? (id === 'sun-primary' ? 'sun' : 'planet'),
+            position: { radius: pos.radius, angle: pos.angle },
+            velocity: vel?.angular ?? 0,
+            audioParams: audio.parameters,
+            audioLayerId: audio.layerId,
+            visualConfig: {
+                color: visual.color,
+                size: visual.size,
+                shaderUniforms: visual.shaderUniforms as Record<string, unknown>,
+            },
+            presetId: preset?.presetId,
+            parentId: hierarchy?.parentId ?? undefined,
+        };
     }
 }

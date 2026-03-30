@@ -1,9 +1,27 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { OrbitalBody } from '../types/orbital';
 import { useAudioEngine } from '../hooks/useAudioEngine';
+import { World } from '../ecs/World';
+import { ComponentType } from '../ecs/components/Component';
+import { AudioComponent } from '../ecs/components/AudioComponent';
+import { PresetComponent } from '../ecs/components/PresetComponent';
+import { AudioEventType } from '../events/AudioEvents';
+import { EventBus } from '../events/EventBus';
+
+import { SunParameters } from '../types/audio';
+import { PhysicsSystem } from '../simulation/PhysicsSystem';
+import { VelocityComponent } from '../ecs/components/VelocityComponent';
+
+interface SelectedBodyInfo {
+    id: string;
+    type: string;
+    position: { radius: number; angle: number };
+    velocity: number;
+    audioParams: Partial<SunParameters>;
+    presetId?: string;
+}
 
 interface SelectionContextType {
-    selectedBody: OrbitalBody | null;
+    selectedBody: SelectedBodyInfo | null;
     selectedBodyId: string | null;
     select: (id: string) => void;
     deselect: () => void;
@@ -16,16 +34,31 @@ export const SelectionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const [selectedBodyId, setSelectedBodyId] = useState<string | null>(null);
     const { engine } = useAudioEngine();
 
-    // State to force re-render when bodies change
+    // State to force re-render when bodies or params change
     const [version, setVersion] = useState(0);
 
-    // Subscribe to manager changes
+    // Subscribe to events that should trigger a selection refresh
     React.useEffect(() => {
-        const unsubscribe = engine.bodiesManager.subscribe(() => {
-            setVersion(v => v + 1);
+        const bus = EventBus.getInstance();
+        const update = () => setVersion(v => v + 1);
+        
+        const unsubAdd = bus.on(AudioEventType.BODY_ADDED, update);
+        const unsubRem = bus.on(AudioEventType.BODY_REMOVED, update);
+        const unsubParams = bus.on(AudioEventType.PARAMS_CHANGED, (data: any) => {
+            if (data.id === selectedBodyId) update();
         });
-        return () => { unsubscribe(); };
-    }, [engine]);
+
+        // For position/velocity, we might want to update more frequently,
+        // but for the inspector text, maybe once per frame or similar is enough.
+        // Actually, we'll just let the version increment on each frame for now if selected?
+        // No, that's too much. Let's just use the current values when it re-renders.
+        
+        return () => { 
+            unsubAdd();
+            unsubRem();
+            unsubParams();
+        };
+    }, [selectedBodyId]);
 
     const select = useCallback((id: string) => {
         setSelectedBodyId(id);
@@ -37,9 +70,28 @@ export const SelectionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const selectedBody = useMemo(() => {
         if (!selectedBodyId) return null;
-        const body = engine.bodiesManager.getBodyById(selectedBodyId);
-        return body || null;
-    }, [selectedBodyId, engine.bodiesManager, version]);
+        
+        const world = World.getInstance();
+        if (!world.entities.hasEntity(selectedBodyId)) return null;
+
+        const audio = world.entities.getComponent<AudioComponent>(selectedBodyId, ComponentType.Audio);
+        const preset = world.entities.getComponent<PresetComponent>(selectedBodyId, ComponentType.Preset);
+        const vel = world.entities.getComponent<VelocityComponent>(selectedBodyId, ComponentType.Velocity);
+        
+        // Get position from PhysicsSystem for most accurate sim state
+        const pos = PhysicsSystem.getInstance().getPosition(selectedBodyId) || { radius: 0, angle: 0 };
+
+        if (!audio) return null;
+
+        return {
+            id: selectedBodyId,
+            type: preset?.bodyType ?? (selectedBodyId === 'sun-primary' ? 'sun' : 'planet'),
+            position: pos,
+            velocity: vel?.angular ?? 0,
+            audioParams: audio.parameters,
+            presetId: preset?.presetId
+        };
+    }, [selectedBodyId, version]);
 
     const value = useMemo(() => ({
         selectedBody,
