@@ -10,6 +10,7 @@ interface TerminalKnobProps {
     onCommit?: (value: number) => void;
     formatValue?: (value: number) => string;
     logarithmic?: boolean;
+    disabled?: boolean;
 }
 
 export const TerminalKnob: React.FC<TerminalKnobProps> = ({
@@ -21,7 +22,8 @@ export const TerminalKnob: React.FC<TerminalKnobProps> = ({
     onChange,
     onCommit,
     formatValue,
-    logarithmic = false
+    logarithmic = false,
+    disabled = false
 }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [dragValue, setDragValue] = useState<number | null>(null);
@@ -115,6 +117,7 @@ export const TerminalKnob: React.FC<TerminalKnobProps> = ({
     }, [handleMouseMove, value]); // value is basically fallback if dragValueRef is null
 
     const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        if (disabled) return;
         setIsDragging(true);
         startYRef.current = e.clientY;
 
@@ -172,8 +175,8 @@ export const TerminalKnob: React.FC<TerminalKnobProps> = ({
     const displayValue = formatValue ? formatValue(effectiveValue) : effectiveValue.toFixed(1);
 
     return (
-        <div className="flex flex-col items-center gap-1 group w-16 select-none flex-shrink-0">
-            <div className="relative w-full aspect-square flex items-center justify-center cursor-ns-resize" onMouseDown={handleMouseDown}>
+        <div className={`flex flex-col items-center gap-1 group w-16 select-none flex-shrink-0 ${disabled ? 'opacity-80' : ''}`}>
+            <div className={`relative w-full aspect-square flex items-center justify-center ${disabled ? 'cursor-default' : 'cursor-ns-resize'}`} onMouseDown={handleMouseDown}>
                 <svg width={size} height={size} className="transform rotate-0">
                     {/* Background Track */}
                     <path

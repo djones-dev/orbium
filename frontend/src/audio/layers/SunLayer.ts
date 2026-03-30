@@ -38,6 +38,8 @@ export class SunLayer implements AudioLayer {
     
     private phaserFilters: BiquadFilterNode[] = [];
     private phaserLFO: OscillatorNode;
+    private phaserLFOGain: GainNode;
+    private phaserFeedbackNode: GainNode;
     private phaserGain: GainNode;
 
     private params: SunParameters = {
@@ -53,6 +55,11 @@ export class SunLayer implements AudioLayer {
         noiseEnabled: true,
         subEnabled: true,
         filterResonance: 1.0,
+        phaserRate: 0.5,
+        phaserDepth: 0.5,
+        phaserFeedback: 0.4,
+        reverbMix: 0.3,
+        reverbSize: 2.0,
         effects: [],
     };
 
@@ -72,7 +79,7 @@ export class SunLayer implements AudioLayer {
 
         // --- Reverb ---
         this.reverbNode = context.createConvolver();
-        this.reverbNode.buffer = this.createImpulseResponse(2.0, 2.0);
+        this.reverbNode.buffer = this.createImpulseResponse(this.params.reverbSize ?? 2.0, 2.0);
         this.reverbGain = context.createGain();
         this.reverbGain.gain.value = 0;
         
@@ -83,6 +90,9 @@ export class SunLayer implements AudioLayer {
         // --- Phaser ---
         this.phaserGain = context.createGain();
         this.phaserGain.gain.value = 0;
+        
+        this.phaserFeedbackNode = context.createGain();
+        this.phaserFeedbackNode.gain.value = 0.4;
         
         // 4 stages of all-pass filters
         for (let i = 0; i < 4; i++) {
@@ -98,15 +108,20 @@ export class SunLayer implements AudioLayer {
             this.phaserFilters[i].connect(this.phaserFilters[i+1]);
         }
         this.phaserFilters[3].connect(this.phaserGain);
+        
+        // Feedback loop
+        this.phaserFilters[3].connect(this.phaserFeedbackNode);
+        this.phaserFeedbackNode.connect(this.phaserFilters[0]);
+        
         this.phaserGain.connect(this.outputGain);
 
         // Phaser LFO
         this.phaserLFO = context.createOscillator();
         this.phaserLFO.frequency.value = 0.5;
-        const phaserLFOGain = context.createGain();
-        phaserLFOGain.gain.value = 500;
-        this.phaserLFO.connect(phaserLFOGain);
-        this.phaserFilters.forEach(ap => phaserLFOGain.connect(ap.frequency));
+        this.phaserLFOGain = context.createGain();
+        this.phaserLFOGain.gain.value = 500;
+        this.phaserLFO.connect(this.phaserLFOGain);
+        this.phaserFilters.forEach(ap => this.phaserLFOGain.connect(ap.frequency));
         this.phaserLFO.start();
 
         this.filter.connect(this.outputGain);
@@ -226,7 +241,7 @@ export class SunLayer implements AudioLayer {
         } = this.params;
 
         const now = this.context.currentTime;
-        const ramp = 0.05;
+        const ramp = 0.01; // Reduced from 0.05 for tighter modulation tracking
 
         if (waveform && waveform !== prev.waveform) {
             this.osc1.type = waveform;
@@ -255,8 +270,25 @@ export class SunLayer implements AudioLayer {
 
         // Handle Effects
         if (effects) {
-            this.reverbGain.gain.setTargetAtTime(effects.includes('reverb') ? 0.6 : 0, now, ramp);
-            this.phaserGain.gain.setTargetAtTime(effects.includes('phaser') ? 0.7 : 0, now, ramp);
+            const { phaserRate, phaserDepth, phaserFeedback, reverbMix, reverbSize } = this.params;
+
+            // Phaser
+            const isPhaserActive = effects.includes('phaser');
+            this.phaserGain.gain.setTargetAtTime(isPhaserActive ? (phaserDepth ?? 0.7) : 0, now, ramp);
+            if (isPhaserActive) {
+                this.phaserLFO.frequency.setTargetAtTime(phaserRate ?? 0.5, now, ramp);
+                this.phaserLFOGain.gain.setTargetAtTime((phaserDepth ?? 0.5) * 1000, now, ramp);
+                this.phaserFeedbackNode.gain.setTargetAtTime(phaserFeedback ?? 0.4, now, ramp);
+            }
+
+            // Reverb
+            const isReverbActive = effects.includes('reverb');
+            this.reverbGain.gain.setTargetAtTime(isReverbActive ? (reverbMix ?? 0.6) : 0, now, ramp);
+            
+            // Re-generate impulse if size changed significantly
+            if (isReverbActive && reverbSize !== undefined && Math.abs(reverbSize - (prev.reverbSize ?? 2.0)) > 0.1) {
+                this.reverbNode.buffer = this.createImpulseResponse(reverbSize, 2.0);
+            }
             
             if (effects.includes('distortion')) {
                 this.distortionNode.curve = this.makeTanhCurve(80);

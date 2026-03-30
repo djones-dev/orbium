@@ -26,6 +26,13 @@ export interface SunParameters {
     sustain?: number; // 0-1
     release?: number; // seconds
     
+    // Effect Parameters
+    phaserRate?: number;    // Hz
+    phaserDepth?: number;   // 0-1
+    phaserFeedback?: number; // 0-1
+    reverbMix?: number;     // 0-1
+    reverbSize?: number;    // seconds (impulse duration)
+    
     effects?: EffectType[]; // Active effects
 }
 

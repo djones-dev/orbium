@@ -19,6 +19,8 @@ interface UIState {
     setDebug: (debug: boolean) => void;
     masterGain: number;
     setMasterGain: (gain: number) => void;
+    pickingModulationTargetForId: string | null;
+    setPickingModulationTarget: (id: string | null) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -45,4 +47,6 @@ export const useUIStore = create<UIState>((set) => ({
         localStorage.setItem('orbium_master_gain', masterGain.toString());
         set({ masterGain });
     },
+    pickingModulationTargetForId: null,
+    setPickingModulationTarget: (id) => set({ pickingModulationTargetForId: id }),
 }));

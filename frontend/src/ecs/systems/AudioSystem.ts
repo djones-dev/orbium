@@ -27,6 +27,8 @@ export class AudioSystem extends System {
         this.dirty.add(entityId);
     }
 
+    private lastEmittedParams = new Map<string, string>();
+
     update(entityManager: EntityManager, _dt: number): void {
         if (this.dirty.size === 0) return;
 
@@ -34,10 +36,15 @@ export class AudioSystem extends System {
             if (!entityManager.hasEntity(id)) continue;
             const audio = entityManager.getComponent<AudioComponent>(id, ComponentType.Audio);
             if (audio) {
+                // Check if parameters actually changed since last emission
+                const paramStr = JSON.stringify(audio.parameters);
+                if (this.lastEmittedParams.get(id) === paramStr) continue;
+
                 this.bus.emit<ParamsChangedEvent>(AudioEventType.PARAMS_CHANGED, {
                     id,
                     params: audio.parameters,
                 });
+                this.lastEmittedParams.set(id, paramStr);
             }
         }
         this.dirty.clear();

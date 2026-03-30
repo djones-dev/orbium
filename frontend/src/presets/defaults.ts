@@ -90,26 +90,31 @@ export const DEFAULT_PRESETS: Preset[] = [
     },
     // Attributes
     {
-        id: 'attr-phaser-sweep',
-        name: 'Cosmic Phaser',
-        description: 'Classic phaser effect for swirling textures.',
+        id: 'attr-solar-flare',
+        name: 'Solar Flare',
+        description: 'Intense phaser effect for swirling solar energy.',
         type: 'effect',
         category: 'attribute',
         parameters: {
-            effects: ['phaser']
+            effects: ['phaser'],
+            phaserRate: 0.8,
+            phaserDepth: 0.6,
+            phaserFeedback: 0.5
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
         updated_at: new Date(now).toISOString()
     },
     {
-        id: 'attr-heavy-reverb',
-        name: 'Galactic Reverb',
-        description: 'Deep spatial reverb for immense scale.',
+        id: 'attr-atmospheric-sweep',
+        name: 'Atmospheric Sweep',
+        description: 'Deep spatial reverb for immense atmospheric scale.',
         type: 'effect',
         category: 'attribute',
         parameters: {
-            effects: ['reverb']
+            effects: ['reverb'],
+            reverbMix: 0.5,
+            reverbSize: 3.5
         },
         is_default: true,
         created_at: new Date(now).toISOString(),

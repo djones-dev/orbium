@@ -10,15 +10,6 @@ import { SunParameters } from '../types/audio';
 import { freqToNote, midiToFreq, freqToMidi } from '../audio/audioUtils';
 import { logger } from '../utils/logger';
 
-const MODULATABLE_PARAMS = [
-    { label: 'FREQUENCY', value: 'rootFrequency' },
-    { label: 'FILTER', value: 'filterCutoff' },
-    { label: 'DISTORTION', value: 'distortion' },
-    { label: 'GAIN', value: 'gainLevel' },
-    { label: 'DETUNE', value: 'detuneSpread' },
-    { label: 'LFO RATE', value: 'lfoRate' },
-];
-
 const WAVEFORM_OPTIONS = [
     { label: 'SIN', value: 'sine' },
     { label: 'TRI', value: 'triangle' },
@@ -28,35 +19,11 @@ const WAVEFORM_OPTIONS = [
 
 type UnitMode = 'Hz' | 'Note' | 'ms';
 
-const ModulationTargetPicker: React.FC<{
-    value: string;
-    onChange: (val: string) => void;
-}> = ({ value, onChange }) => {
-    return (
-        <div className="flex flex-col gap-1.5 w-full">
-            <div className="text-[9px] text-[var(--color-text-secondary)] opacity-80 uppercase tracking-tighter">Target Parameter</div>
-            <div className="grid grid-cols-2 gap-1">
-                {MODULATABLE_PARAMS.map(p => (
-                    <button
-                        key={p.value}
-                        onClick={() => onChange(p.value)}
-                        className={`text-[8px] p-1 border rounded transition-all uppercase font-bold text-center ${
-                            value === p.value 
-                                ? 'bg-[var(--color-accent-primary)]/20 border-[var(--color-accent-primary)] text-[var(--color-accent-primary)] shadow-[0_0_8px_rgba(51,255,51,0.2)]'
-                                : 'bg-black/20 border-[var(--color-border)]/30 text-[var(--color-text-secondary)] hover:border-[var(--color-border)]'
-                        }`}
-                    >
-                        {p.label}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-};
-
 export const ParameterEditor: React.FC = () => {
     const { selectedBody, manager } = useSelection();
     const showToast = useUIStore(state => state.showToast);
+    const pickingTargetForId = useUIStore(state => state.pickingModulationTargetForId);
+    const setPickingTarget = useUIStore(state => state.setPickingModulationTarget);
 
     const [saveStatus, setSaveStatus] = useState<'IDLE' | 'EDITING' | 'SAVING' | 'SAVED' | 'ERROR'>('IDLE');
     const pendingChangesRef = useRef<Partial<SunParameters>>({});
@@ -113,12 +80,17 @@ export const ParameterEditor: React.FC = () => {
         manager.updateBodyParams(selectedBody.id, { [key]: value }, false);
     }, [selectedBody, manager]);
 
+    const handlePickParameter = (key: string) => {
+        if (pickingTargetForId) {
+            manager.updateBodyParams(pickingTargetForId, { modTarget: key }, true);
+            setPickingTarget(null);
+            showToast(`TARGET SET: ${key.toUpperCase()}`, 'success');
+        }
+    };
+
     // Only triggered when user releases the knob
     const onParamCommit = useCallback(() => {
         if (!selectedBody) return;
-        // Wait a moment before saving to let the user "settle" if they quickly grab it again?
-        // Actually user said "happen a couple seconds after that".
-        // We'll set a timeout.
         setTimeout(() => {
             performSave(selectedBody.id);
         }, 1000);
@@ -135,6 +107,8 @@ export const ParameterEditor: React.FC = () => {
     const { type, audioParams } = selectedBody;
     const isGenerator = type === 'sun' || type === 'planet';
     const isModulator = type === 'moon';
+    const hasPhaser = audioParams.effects?.includes('phaser');
+    const hasReverb = audioParams.effects?.includes('reverb');
 
     const getParam = (key: keyof SunParameters, def: number) => {
         const val = audioParams[key];
@@ -149,6 +123,7 @@ export const ParameterEditor: React.FC = () => {
 
     const renderFrequencyControl = (paramKey: 'rootFrequency' | 'filterCutoff' | 'lfoRate', label: string, min: number, max: number, size: number = 48) => {
         const mode = unitModes[paramKey] || 'Hz';
+        const isPicking = !!pickingTargetForId;
 
         // Value conversion logic
         let value = getParam(paramKey, 440);
@@ -184,7 +159,10 @@ export const ParameterEditor: React.FC = () => {
         const availableModes: UnitMode[] = paramKey === 'lfoRate' ? ['Hz', 'ms'] : ['Hz', 'Note'];
 
         return (
-            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+            <div 
+                className={`flex flex-col items-center gap-1.5 flex-shrink-0 transition-all ${isPicking ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                onClick={() => isPicking && handlePickParameter(paramKey)}
+            >
                 <TerminalKnob
                     label={label}
                     value={value}
@@ -195,9 +173,10 @@ export const ParameterEditor: React.FC = () => {
                     onCommit={onParamCommit}
                     formatValue={format}
                     size={size}
+                    disabled={isPicking}
                 />
                 <button
-                    onClick={() => toggleUnitMode(paramKey, availableModes)}
+                    onClick={(e) => { e.stopPropagation(); toggleUnitMode(paramKey, availableModes); }}
                     className="text-[9px] text-[var(--color-text-secondary)] hover:text-[#0ff] bg-black/40 border border-[var(--color-border)] px-1.5 py-0.5 rounded cursor-pointer transition-colors"
                 >
                     {mode.toUpperCase()}
@@ -245,16 +224,22 @@ export const ParameterEditor: React.FC = () => {
 
                         {renderFrequencyControl('rootFrequency', 'FREQ', 20, 2000, 52)}
 
-                        <TerminalKnob
-                            label="DETUNE"
-                            value={getParam('detuneSpread', 0)}
-                            min={0}
-                            max={50}
-                            onChange={(v) => onParamChange('detuneSpread', v)}
-                            onCommit={onParamCommit}
-                            formatValue={(v) => `${v.toFixed(0)} ct`}
-                            size={40}
-                        />
+                        <div 
+                            className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                            onClick={() => pickingTargetForId && handlePickParameter('detuneSpread')}
+                        >
+                            <TerminalKnob
+                                label="DETUNE"
+                                value={getParam('detuneSpread', 0)}
+                                min={0}
+                                max={50}
+                                onChange={(v) => onParamChange('detuneSpread', v)}
+                                onCommit={onParamCommit}
+                                formatValue={(v) => `${v.toFixed(0)} ct`}
+                                size={40}
+                                disabled={!!pickingTargetForId}
+                            />
+                        </div>
 
                         <div className="w-px bg-[var(--color-border)] opacity-20 h-2/3"></div>
 
@@ -274,32 +259,105 @@ export const ParameterEditor: React.FC = () => {
                     </div>
                 )}
 
-                {/* EFFECTS */}
-                {isGenerator && (
+                {/* PHASER (Dynamic) */}
+                {isGenerator && hasPhaser && (
                     <div className="flex gap-4 p-3 border border-[var(--color-border)] rounded bg-black/20 flex-shrink-0 h-full items-center relative min-w-max">
-                        <div className="absolute top-0 left-2 text-[9px] font-bold text-[var(--color-text-secondary)] tracking-widest -translate-y-1/2 bg-[var(--color-bg)] px-1">EFFECTS</div>
-                        <div className="flex flex-col gap-2 w-24">
-                            <TerminalToggle
-                                label="PHASER"
-                                checked={!!audioParams.effects?.includes('phaser')}
-                                onChange={(v) => {
-                                    const current = audioParams.effects || [];
-                                    const next = v ? [...current, 'phaser' as const] : current.filter(e => e !== 'phaser');
-                                    onParamChange('effects', next);
-                                    onParamCommit();
-                                }}
-                            />
-                            <TerminalToggle
-                                label="REVERB"
-                                checked={!!audioParams.effects?.includes('reverb')}
-                                onChange={(v) => {
-                                    const current = audioParams.effects || [];
-                                    const next = v ? [...current, 'reverb' as const] : current.filter(e => e !== 'reverb');
-                                    onParamChange('effects', next);
-                                    onParamCommit();
-                                }}
+                        <div className="absolute top-0 left-2 text-[9px] font-bold text-[var(--color-accent-primary)] tracking-widest -translate-y-1/2 bg-[var(--color-bg)] px-1">PHASER</div>
+                        <div 
+                            className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                            onClick={() => pickingTargetForId && handlePickParameter('phaserRate')}
+                        >
+                            <TerminalKnob
+                                label="RATE"
+                                value={getParam('phaserRate', 0.5)}
+                                min={0.1}
+                                max={10}
+                                onChange={(v) => onParamChange('phaserRate', v)}
+                                onCommit={onParamCommit}
+                                formatValue={(v) => `${v.toFixed(1)} Hz`}
+                                size={40}
+                                disabled={!!pickingTargetForId}
                             />
                         </div>
+                        <div 
+                            className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                            onClick={() => pickingTargetForId && handlePickParameter('phaserDepth')}
+                        >
+                            <TerminalKnob
+                                label="DEPTH"
+                                value={getParam('phaserDepth', 0.5)}
+                                min={0}
+                                max={1}
+                                onChange={(v) => onParamChange('phaserDepth', v)}
+                                onCommit={onParamCommit}
+                                formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+                                size={40}
+                                disabled={!!pickingTargetForId}
+                            />
+                        </div>
+                        <div 
+                            className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                            onClick={() => pickingTargetForId && handlePickParameter('phaserFeedback')}
+                        >
+                            <TerminalKnob
+                                label="FEEDBK"
+                                value={getParam('phaserFeedback', 0.4)}
+                                min={0}
+                                max={0.9}
+                                onChange={(v) => onParamChange('phaserFeedback', v)}
+                                onCommit={onParamCommit}
+                                formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+                                size={40}
+                                disabled={!!pickingTargetForId}
+                            />
+                        </div>
+                        <button 
+                            className="text-[8px] text-red-500/60 hover:text-red-500 border border-red-500/20 px-1 py-0.5 rounded"
+                            onClick={() => onParamChange('effects', audioParams.effects?.filter(e => e !== 'phaser'))}
+                        >REMOVE</button>
+                    </div>
+                )}
+
+                {/* REVERB (Dynamic) */}
+                {isGenerator && hasReverb && (
+                    <div className="flex gap-4 p-3 border border-[var(--color-border)] rounded bg-black/20 flex-shrink-0 h-full items-center relative min-w-max">
+                        <div className="absolute top-0 left-2 text-[9px] font-bold text-[var(--color-accent-secondary)] tracking-widest -translate-y-1/2 bg-[var(--color-bg)] px-1">REVERB</div>
+                        <div 
+                            className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                            onClick={() => pickingTargetForId && handlePickParameter('reverbMix')}
+                        >
+                            <TerminalKnob
+                                label="MIX"
+                                value={getParam('reverbMix', 0.3)}
+                                min={0}
+                                max={1}
+                                onChange={(v) => onParamChange('reverbMix', v)}
+                                onCommit={onParamCommit}
+                                formatValue={(v) => `${(v * 100).toFixed(0)}%`}
+                                size={40}
+                                disabled={!!pickingTargetForId}
+                            />
+                        </div>
+                        <div 
+                            className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                            onClick={() => pickingTargetForId && handlePickParameter('reverbSize')}
+                        >
+                            <TerminalKnob
+                                label="SIZE"
+                                value={getParam('reverbSize', 2.0)}
+                                min={0.1}
+                                max={8}
+                                onChange={(v) => onParamChange('reverbSize', v)}
+                                onCommit={onParamCommit}
+                                formatValue={(v) => `${v.toFixed(1)}s`}
+                                size={40}
+                                disabled={!!pickingTargetForId}
+                            />
+                        </div>
+                        <button 
+                            className="text-[8px] text-red-500/60 hover:text-red-500 border border-red-500/20 px-1 py-0.5 rounded"
+                            onClick={() => onParamChange('effects', audioParams.effects?.filter(e => e !== 'reverb'))}
+                        >REMOVE</button>
                     </div>
                 )}
 
@@ -313,28 +371,40 @@ export const ParameterEditor: React.FC = () => {
                         {isGenerator ? (
                             <>
                                 {renderFrequencyControl('filterCutoff', 'CUTOFF', 20, 20000, 52)}
-                                <TerminalKnob
-                                    label="RES"
-                                    value={getParam('filterResonance', 1)}
-                                    min={0}
-                                    max={20}
-                                    onChange={(v) => onParamChange('filterResonance', v)}
-                                    onCommit={onParamCommit}
-                                    formatValue={(v) => `Q:${v.toFixed(1)}`}
-                                    size={40}
-                                />
+                                <div 
+                                    className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                                    onClick={() => pickingTargetForId && handlePickParameter('filterResonance')}
+                                >
+                                    <TerminalKnob
+                                        label="RES"
+                                        value={getParam('filterResonance', 1)}
+                                        min={0}
+                                        max={20}
+                                        onChange={(v) => onParamChange('filterResonance', v)}
+                                        onCommit={onParamCommit}
+                                        formatValue={(v) => `Q:${v.toFixed(1)}`}
+                                        size={40}
+                                        disabled={!!pickingTargetForId}
+                                    />
+                                </div>
                                 <div className="w-px bg-[var(--color-border)] opacity-20 h-2/3"></div>
 
-                                <TerminalKnob
-                                    label="DRIVE"
-                                    value={getParam('distortion', 0)}
-                                    min={0}
-                                    max={100}
-                                    onChange={(v) => onParamChange('distortion', v)}
-                                    onCommit={onParamCommit}
-                                    formatValue={(v) => `${v.toFixed(0)}%`}
-                                    size={40}
-                                />
+                                <div 
+                                    className={`flex flex-col items-center gap-1.5 transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                                    onClick={() => pickingTargetForId && handlePickParameter('distortion')}
+                                >
+                                    <TerminalKnob
+                                        label="DRIVE"
+                                        value={getParam('distortion', 0)}
+                                        min={0}
+                                        max={100}
+                                        onChange={(v) => onParamChange('distortion', v)}
+                                        onCommit={onParamCommit}
+                                        formatValue={(v) => `${v.toFixed(0)}%`}
+                                        size={40}
+                                        disabled={!!pickingTargetForId}
+                                    />
+                                </div>
                             </>
                         ) : (
                             <>
@@ -423,11 +493,23 @@ export const ParameterEditor: React.FC = () => {
                                 )}
 
                                 <div className="w-px bg-[var(--color-border)] opacity-20 h-2/3"></div>
-                                <div className="flex flex-col gap-2 w-36">
-                                    <ModulationTargetPicker
-                                        value={getStringParam('modTarget', 'filterCutoff')}
-                                        onChange={(v) => { onParamChange('modTarget', v); onParamCommit(); }}
-                                    />
+                                <div className="flex flex-col gap-3 w-36">
+                                    <button
+                                        onClick={() => setPickingTarget(selectedBody.id)}
+                                        className={`w-full py-2 text-[9px] font-bold border transition-all rounded uppercase tracking-widest ${
+                                            pickingTargetForId === selectedBody.id 
+                                                ? 'bg-[var(--color-accent-primary)] text-black border-[var(--color-accent-primary)] shadow-[0_0_15px_var(--color-accent-primary)] animate-pulse'
+                                                : 'bg-black/40 border-[var(--color-border)] text-[var(--color-accent-primary)] hover:border-[var(--color-accent-primary)]'
+                                        }`}
+                                    >
+                                        {pickingTargetForId === selectedBody.id ? 'Click Target...' : 'Choose Parameter'}
+                                    </button>
+                                    <div className="flex flex-col gap-1">
+                                        <div className="text-[8px] text-[var(--color-text-secondary)] uppercase">Current Target</div>
+                                        <div className="text-[10px] text-[var(--color-accent-primary)] font-bold font-mono p-1 bg-black/40 border border-[var(--color-border)]/30 rounded text-center">
+                                            {(audioParams.modTarget || 'NONE').toUpperCase()}
+                                        </div>
+                                    </div>
                                     {audioParams.modType === 'adsr' && (
                                         <TerminalKnob
                                             label="DEPTH"
@@ -451,41 +533,59 @@ export const ParameterEditor: React.FC = () => {
             <div className="w-auto border-l border-[var(--color-border)] bg-[var(--color-panel-bg)] flex flex-row items-center p-3 gap-4 flex-shrink-0 z-10 shadow-xl">
                 {isGenerator && (
                     <div className="flex items-center gap-4 border-r border-[var(--color-border)] pr-4">
-                        <TerminalKnob
-                            label="MAIN"
-                            value={getParam('gainLevel', -10)}
-                            min={-60}
-                            max={0}
-                            onChange={(v) => onParamChange('gainLevel', v)}
-                            onCommit={onParamCommit}
-                            formatValue={(v) => `${v.toFixed(0)} dB`}
-                            size={48}
-                        />
+                        <div 
+                            className={`transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                            onClick={() => pickingTargetForId && handlePickParameter('gainLevel')}
+                        >
+                            <TerminalKnob
+                                label="MAIN"
+                                value={getParam('gainLevel', -10)}
+                                min={-60}
+                                max={0}
+                                onChange={(v) => onParamChange('gainLevel', v)}
+                                onCommit={onParamCommit}
+                                formatValue={(v) => `${v.toFixed(0)} dB`}
+                                size={48}
+                                disabled={!!pickingTargetForId}
+                            />
+                        </div>
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
-                                <TerminalKnob
-                                    label="SUB"
-                                    value={getParam('subVol', -60)}
-                                    min={-60}
-                                    max={0}
-                                    onChange={(v) => onParamChange('subVol', v)}
-                                    onCommit={onParamCommit}
-                                    formatValue={(v) => `${v.toFixed(0)}`}
-                                    size={30}
-                                />
+                                <div 
+                                    className={`transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                                    onClick={() => pickingTargetForId && handlePickParameter('subVol')}
+                                >
+                                    <TerminalKnob
+                                        label="SUB"
+                                        value={getParam('subVol', -60)}
+                                        min={-60}
+                                        max={0}
+                                        onChange={(v) => onParamChange('subVol', v)}
+                                        onCommit={onParamCommit}
+                                        formatValue={(v) => `${v.toFixed(0)}`}
+                                        size={30}
+                                        disabled={!!pickingTargetForId}
+                                    />
+                                </div>
                                 <span className="text-[9px] text-[var(--color-text-secondary)] font-mono w-4 text-center">S</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <TerminalKnob
-                                    label="NOISE"
-                                    value={getParam('noiseVol', -60)}
-                                    min={-60}
-                                    max={0}
-                                    onChange={(v) => onParamChange('noiseVol', v)}
-                                    onCommit={onParamCommit}
-                                    formatValue={(v) => `${v.toFixed(0)}`}
-                                    size={30}
-                                />
+                                <div 
+                                    className={`transition-all ${pickingTargetForId ? 'cursor-crosshair scale-105 filter drop-shadow-[0_0_8px_var(--color-accent-primary)]' : ''}`}
+                                    onClick={() => pickingTargetForId && handlePickParameter('noiseVol')}
+                                >
+                                    <TerminalKnob
+                                        label="NOISE"
+                                        value={getParam('noiseVol', -60)}
+                                        min={-60}
+                                        max={0}
+                                        onChange={(v) => onParamChange('noiseVol', v)}
+                                        onCommit={onParamCommit}
+                                        formatValue={(v) => `${v.toFixed(0)}`}
+                                        size={30}
+                                        disabled={!!pickingTargetForId}
+                                    />
+                                </div>
                                 <span className="text-[9px] text-[var(--color-text-secondary)] font-mono w-4 text-center">N</span>
                             </div>
                         </div>
