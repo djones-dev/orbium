@@ -154,9 +154,9 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
 
                 {/* Left Column Dock */}
                 {!bottomLeftVisible && (
-                    <div className="h-8 flex items-center px-2 gap-2 border-t border-[var(--color-border)] bg-black/40">
+                    <div className="h-8 flex items-center px-2 gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg)]">
                         <button
-                            className="px-3 py-1 text-[9px] font-bold tracking-tighter uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] transition-all rounded bg-black/20"
+                            className="px-3 py-1 text-[9px] font-bold tracking-tighter uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] transition-all rounded bg-white/[0.05]"
                             onClick={() => setBottomLeftVisible(true)}
                         >
                             ＋ INSPECTOR
@@ -227,10 +227,10 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
 
                 {/* Right Column Dock */}
                 {(!bottomVisible || !mixerVisible) && (
-                    <div className="h-8 flex items-center px-3 gap-3 border-t border-[var(--color-border)] bg-black/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                    <div className="h-8 flex items-center px-3 gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                         {!bottomVisible && (
                             <button
-                                className="px-3 py-1 text-[9px] font-bold tracking-widest uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-accent-primary)]/5 transition-all rounded bg-black/40 flex items-center gap-1.5"
+                                className="px-3 py-1 text-[9px] font-bold tracking-widest uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-accent-primary)]/5 transition-all rounded bg-white/[0.05] flex items-center gap-1.5"
                                 onClick={() => setBottomVisible(true)}
                             >
                                 <span className="text-[10px]">＋</span> PARAMETERS
@@ -238,7 +238,7 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                         )}
                         {!mixerVisible && (
                             <button
-                                className="px-3 py-1 text-[9px] font-bold tracking-widest uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-accent-primary)]/5 transition-all rounded bg-black/40 flex items-center gap-1.5"
+                                className="px-3 py-1 text-[9px] font-bold tracking-widest uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-accent-primary)]/5 transition-all rounded bg-white/[0.05] flex items-center gap-1.5"
                                 onClick={() => setMixerVisible(true)}
                             >
                                 <span className="text-[10px]">＋</span> MIXER

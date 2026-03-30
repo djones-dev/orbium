@@ -35,6 +35,19 @@ export const ParameterEditor: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<'IDLE' | 'EDITING' | 'SAVING' | 'SAVED' | 'ERROR'>('IDLE');
     const pendingChangesRef = useRef<Partial<SunParameters>>({});
 
+    const [localName, setLocalName] = useState(selectedBody?.name || '');
+
+    // Sync local name when selected body changes
+    React.useEffect(() => {
+        setLocalName(selectedBody?.name || '');
+    }, [selectedBody?.id, selectedBody?.name]);
+
+    const handleNameCommit = () => {
+        if (selectedBody && localName !== selectedBody.name) {
+            manager.updateBodyName(selectedBody.id, localName);
+        }
+    };
+
     const [unitModes, setUnitModes] = useState<Record<string, UnitMode>>({
         rootFrequency: 'Hz',
         lfoRate: 'Hz',
@@ -180,9 +193,16 @@ export const ParameterEditor: React.FC = () => {
                         <label className="text-[9px] text-[var(--color-text-secondary)] uppercase">Label</label>
                         <input
                             type="text"
-                            value={selectedBody.name || ''}
+                            value={localName}
                             placeholder={selectedBody.type.toUpperCase()}
-                            onChange={(e) => manager.updateBodyName(selectedBody.id, e.target.value)}
+                            onChange={(e) => setLocalName(e.target.value)}
+                            onBlur={handleNameCommit}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleNameCommit();
+                                    (e.target as HTMLInputElement).blur();
+                                }
+                            }}
                             className="bg-black/40 border border-[var(--color-border)] text-[10px] p-1.5 outline-none text-[var(--color-accent-primary)] font-mono uppercase w-32 rounded hover:border-[var(--color-accent-secondary)] transition-colors focus:border-[var(--color-accent-primary)]"
                         />
                     </div>

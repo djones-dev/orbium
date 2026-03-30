@@ -93,7 +93,7 @@ export const TerminalKnob: React.FC<TerminalKnobProps> = ({
         onChangeRef.current(newValue);
     }, [getValueFromNormalized]);
 
-    const handleMouseUp = useCallback((e: MouseEvent) => {
+    const handleMouseUp = useCallback(() => {
         setIsDragging(false);
 
         const finalValue = dragValueRef.current !== null ? dragValueRef.current : value;

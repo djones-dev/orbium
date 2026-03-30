@@ -12,6 +12,7 @@ import { logger } from '@/utils/logger';
 export class SunLayer implements AudioLayer {
     readonly id: string;
     readonly type = 'sun';
+    readonly analyser: AnalyserNode;
 
     private context: AudioContext;
     private outputGain: GainNode;
@@ -51,7 +52,11 @@ export class SunLayer implements AudioLayer {
         this.context = context;
         this.id = id;
 
+        this.analyser = context.createAnalyser();
+        this.analyser.fftSize = 256;
+
         this.outputGain = context.createGain();
+        this.outputGain.connect(this.analyser);
 
         this.filter = context.createBiquadFilter();
         this.filter.type = 'lowpass';
@@ -199,11 +204,11 @@ export class SunLayer implements AudioLayer {
     }
 
     connect(destination: AudioNode): void {
-        this.outputGain.connect(destination);
+        this.analyser.connect(destination);
     }
 
     disconnect(): void {
-        this.outputGain.disconnect();
+        this.analyser.disconnect();
     }
 
     setVolume(value: number): void {
@@ -217,6 +222,7 @@ export class SunLayer implements AudioLayer {
         this.subOsc.stop();
         this.lfo.stop();
         this.noiseNode.disconnect();
+        this.analyser.disconnect();
         this.disconnect();
     }
 }

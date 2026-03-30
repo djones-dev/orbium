@@ -18,6 +18,7 @@ export interface SunParameters {
 export interface AudioLayer {
     readonly id: string;
     readonly type: string;
+    readonly analyser: AnalyserNode;
     connect(destination: AudioNode): void;
     disconnect(): void;
     setVolume(value: number): void;
