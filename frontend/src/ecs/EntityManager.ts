@@ -16,7 +16,7 @@ interface Archetype {
  * of components are grouped together. Querying for a set of component types
  * only iterates over matching archetypes.
  *
- * O(1) for most operations; O(n_archetypes) for queries.
+ * Object pooling is used for component maps to reduce GC pressure.
  */
 export class EntityManager {
     private entities = new Set<EntityId>();
@@ -28,13 +28,21 @@ export class EntityManager {
     // Component data storage: Map<EntityId, Map<ComponentType, Component>>
     private components = new Map<EntityId, Map<ComponentType, Component>>();
 
+    // Object pool for component maps
+    private componentMapPool: Map<ComponentType, Component>[] = [];
+
     // ── Entity lifecycle ──────────────────────────────────────────────────────
 
-    createEntity(id: EntityId): EntityId {
-        this.entities.add(id);
-        this.components.set(id, new Map());
-        this.updateArchetype(id);
-        return id;
+    createEntity(id?: EntityId): EntityId {
+        const entityId = id ?? crypto.randomUUID();
+        this.entities.add(entityId);
+        
+        // Acquire map from pool
+        const map = this.componentMapPool.pop() ?? new Map();
+        this.components.set(entityId, map);
+        
+        this.updateArchetype(entityId);
+        return entityId;
     }
 
     destroyEntity(id: EntityId): void {
@@ -42,6 +50,13 @@ export class EntityManager {
         if (key) {
             this.archetypes.get(key)?.entities.delete(id);
         }
+        
+        const map = this.components.get(id);
+        if (map) {
+            map.clear();
+            this.componentMapPool.push(map);
+        }
+        
         this.entityToArchetype.delete(id);
         this.components.delete(id);
         this.entities.delete(id);
