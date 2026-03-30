@@ -7,6 +7,7 @@ export enum ComponentType {
     Preset = 'preset',
     Physics = 'physics',
     Modulation = 'modulation',
+    Collider = 'collider',
 }
 
 /** Marker interface — all components carry their discriminant type. */
