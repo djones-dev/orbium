@@ -2,6 +2,7 @@ import { System } from './System';
 import { EntityManager } from '../EntityManager';
 import { ComponentType } from '../components/Component';
 import { PositionComponent } from '../components/PositionComponent';
+import { HierarchyComponent } from '../components/HierarchyComponent';
 import { PhysicsSystem } from '../../simulation/PhysicsSystem';
 
 /**
@@ -11,7 +12,8 @@ import { PhysicsSystem } from '../../simulation/PhysicsSystem';
  * This keeps ECS position data current so other systems (AudioSystem,
  * RenderSystem) can query it without depending on PhysicsSystem directly.
  *
- * Priority 100 — runs before AudioSystem (200) and RenderSystem (300).
+ * Priority 100 — runs after HierarchySystem (50) and before AudioSystem (200)
+ * and RenderSystem (300).
  */
 export class MovementSystem extends System {
     readonly priority = 100;
@@ -21,6 +23,12 @@ export class MovementSystem extends System {
         const physics = PhysicsSystem.getInstance();
 
         for (const id of entityManager.query(ComponentType.Position, ComponentType.Velocity)) {
+            // Skip child bodies — HierarchySystem handles them.
+            const hierarchy = entityManager.getComponent<HierarchyComponent>(id, ComponentType.Hierarchy);
+            if (hierarchy && hierarchy.parentId) {
+                continue;
+            }
+
             const simPos = physics.getPosition(id);
             if (!simPos) continue;
 
