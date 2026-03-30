@@ -133,6 +133,21 @@ Orbium uses **Alembic** for backend database migrations.
   docker-compose run --rm backend alembic downgrade -1
   ```
 
+## Monitoring & Observability
+
+### Logger Utility
+Orbium uses a custom logger (`frontend/src/utils/logger.ts`) to manage console output. By default, most logs and errors are suppressed in the production build to improve performance and keep the console clean.
+
+### Debug Mode
+To enable verbose logging in the browser console:
+1. Open the browser's developer tools.
+2. In the console, access the UI store:
+   ```javascript
+   // Enable debug mode
+   window.useUIStore.getState().setDebug(true);
+   ```
+   *(Note: This requires `useUIStore` to be exposed to the window object, which is currently done in development builds).*
+
 ## Troubleshooting
 
 - **Database connection failures**: Ensure `DATABASE_URL` matches the `POSTGRES_*` variables and the service name is `db`.

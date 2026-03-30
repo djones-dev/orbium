@@ -27,7 +27,7 @@ Entities in Orbium use **string UUIDs** as their unique identifiers. This aligns
        data,
    });
    ```
-4. **Attach to entities**: Use `entityManager.addComponent(id, createFooComponent('bar'))` during entity creation, typically in `OrbitalBodiesAdapter.addEntity()`.
+4. **Attach to entities**: Use `entityManager.addComponent(id, createFooComponent('bar'))` during entity creation, typically in `OrbitalBodiesManager.addEntityToECS()`.
 
 ## Adding a New System
 
@@ -53,6 +53,7 @@ LOWER numbers run FIRST.
 | System | Priority | Role | Reads | Writes |
 |---|---|---|---|---|
 | **HierarchySystem** | 50 | World-space conversion | Hierarchy, Position | Position |
+| **PhysicsSystem** | 90 | Force integration | Physics, Position | Velocity |
 | **MovementSystem** | 100 | Sync from Physics | Velocity, Physics | Position |
 | **CollisionSystem** | 150 | Proximity detection | Position, Collider | EventBus |
 | **ModulationSystem** | 180 | Parameter routing | Modulation, Audio | Audio, Dirty Set |
@@ -75,11 +76,19 @@ if (pos) {
 }
 ```
 
-## Migration Bridge: OrbitalBodiesAdapter
+## Performance Optimizations
 
-During the migration (Phases 4–6), `OrbitalBodiesAdapter` acts as a bridge between the legacy `OrbitalBody` model and the new ECS World.
+### Archetype-based Storage
+The `EntityManager` groups entities into **archetypes** based on their unique set of component types. When querying for entities with specific components, the manager only iterates over matching archetypes, making queries extremely efficient even with thousands of entities.
 
-- `addEntity(body)`: Synchronizes an `OrbitalBody` to the ECS.
-- `toOrbitalBody(id)`: Reconstructs an `OrbitalBody` from ECS components (used by legacy consumers).
+### Object Pooling
+To minimize garbage collection pressure during frequent body additions and removals, `EntityManager` utilizes an internal pool for component maps. Destroyed entities return their storage maps to the pool for reuse by new entities.
 
-Once Phase 7 is complete, this adapter will be removed, and all parts of the application will interact directly with the ECS.
+## Simulation Bridge: OrbitalBodiesManager
+
+The `OrbitalBodiesManager` acts as the primary coordinator between the simulation state, the ECS World, and the backend persistence layer.
+
+- `loadFromBackend()`: Restores simulation state from the database into ECS.
+- `addBody(body)`: Instantiates a new celestial body, adding its components to the ECS World.
+- `updateBodyParams(id, params)`: Updates parameters in the `AudioComponent` and notifies relevant systems.
+- `getBodies()`: Reconstructs legacy `OrbitalBody` structures from ECS components for consumers that still require the monolithic format.
