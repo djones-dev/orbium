@@ -29,6 +29,7 @@ class BodyInstance(Base):
     __tablename__ = "bodies"
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=True)
     preset_id = Column(String, nullable=True)
     type = Column(String, nullable=False)
     position = Column(JSON, nullable=False)

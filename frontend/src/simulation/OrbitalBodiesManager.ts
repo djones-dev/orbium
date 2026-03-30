@@ -19,6 +19,7 @@ import { createHierarchyComponent, HierarchyComponent } from '../ecs/components/
 import { createPresetComponent, PresetComponent } from '../ecs/components/PresetComponent';
 import { createPhysicsComponent } from '../ecs/components/PhysicsComponent';
 import { createColliderComponent } from '../ecs/components/ColliderComponent';
+import { createMetadataComponent, MetadataComponent } from '../ecs/components/MetadataComponent';
 import { logger } from '../utils/logger';
 
 export class OrbitalBodiesManager {
@@ -121,9 +122,29 @@ export class OrbitalBodiesManager {
 
         if (sync && id !== 'sun-primary') {
             try {
-                await bodyService.updateBody(id, params);
+                await bodyService.updateBody(id, { audioParams: params });
             } catch (error) {
                 logger.error('Failed to sync body update:', error);
+            }
+        }
+    }
+
+    async updateBodyName(id: string, name: string, sync: boolean = true): Promise<void> {
+        const em = World.getInstance().entities;
+        const metadata = em.getComponent<MetadataComponent>(id, ComponentType.Metadata);
+        if (!metadata) {
+            em.addComponent(id, createMetadataComponent(name));
+        } else {
+            metadata.name = name;
+        }
+
+        this.notify();
+
+        if (sync && id !== 'sun-primary') {
+            try {
+                await bodyService.updateBody(id, { name });
+            } catch (error) {
+                logger.error('Failed to sync body name update:', error);
             }
         }
     }
@@ -170,6 +191,10 @@ export class OrbitalBodiesManager {
         em.addComponent(body.id, createPresetComponent(body.type, body.presetId, body.presetType));
         em.addComponent(body.id, createPhysicsComponent(1, 0.999));
         em.addComponent(body.id, createColliderComponent(body.visualConfig.size));
+        
+        if (body.name) {
+            em.addComponent(body.id, createMetadataComponent(body.name));
+        }
     }
 
     private removeEntityFromECS(id: string): void {
@@ -186,11 +211,13 @@ export class OrbitalBodiesManager {
         const visual = em.getComponent<VisualComponent>(id, ComponentType.Visual);
         const hierarchy = em.getComponent<HierarchyComponent>(id, ComponentType.Hierarchy);
         const preset = em.getComponent<PresetComponent>(id, ComponentType.Preset);
+        const metadata = em.getComponent<MetadataComponent>(id, ComponentType.Metadata);
 
         if (!pos || !audio || !visual) return undefined;
 
         return {
             id,
+            name: metadata?.name,
             type: preset?.bodyType ?? (id === 'sun-primary' ? 'sun' : 'planet'),
             position: { radius: pos.radius, angle: pos.angle },
             velocity: vel?.angular ?? 0,

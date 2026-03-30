@@ -14,6 +14,7 @@ import { MasterChain } from './MasterChain';
 import { WorkletManager } from './WorkletManager';
 import { LayerFactory } from './layers/LayerFactory';
 import { SunLayer } from './layers/SunLayer';
+import { useUIStore } from '../stores/uiStore';
 import { logger } from '../utils/logger';
 // @ts-ignore
 import noiseProcessorUrl from './worklets/noise-processor.js?url';
@@ -89,6 +90,10 @@ export class AudioEngine {
             }
 
             this.masterChain = new MasterChain(this.context);
+            
+            // Apply persisted master gain
+            const persistedGain = useUIStore.getState().masterGain;
+            this.masterChain.gain.gain.setTargetAtTime(persistedGain, this.context.currentTime, 0.01);
 
             this.sunLayer = new SunLayer(this.context, 'sun-primary');
             this.sunLayer.connect(this.masterChain.gain);

@@ -10,13 +10,20 @@ import { EventBus } from '../events/EventBus';
 import { SunParameters } from '../types/audio';
 import { PhysicsSystem } from '../simulation/PhysicsSystem';
 import { VelocityComponent } from '../ecs/components/VelocityComponent';
+import { MetadataComponent } from '../ecs/components/MetadataComponent';
+import { VisualComponent } from '../ecs/components/VisualComponent';
 
 interface SelectedBodyInfo {
     id: string;
+    name?: string;
     type: string;
     position: { radius: number; angle: number };
     velocity: number;
     audioParams: Partial<SunParameters>;
+    visualConfig: {
+        color: string;
+        size: number;
+    };
     presetId?: string;
 }
 
@@ -77,18 +84,25 @@ export const SelectionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const audio = world.entities.getComponent<AudioComponent>(selectedBodyId, ComponentType.Audio);
         const preset = world.entities.getComponent<PresetComponent>(selectedBodyId, ComponentType.Preset);
         const vel = world.entities.getComponent<VelocityComponent>(selectedBodyId, ComponentType.Velocity);
+        const metadata = world.entities.getComponent<MetadataComponent>(selectedBodyId, ComponentType.Metadata);
+        const visual = world.entities.getComponent<VisualComponent>(selectedBodyId, ComponentType.Visual);
         
         // Get position from PhysicsSystem for most accurate sim state
         const pos = PhysicsSystem.getInstance().getPosition(selectedBodyId) || { radius: 0, angle: 0 };
 
-        if (!audio) return null;
+        if (!audio || !visual) return null;
 
         return {
             id: selectedBodyId,
+            name: metadata?.name,
             type: preset?.bodyType ?? (selectedBodyId === 'sun-primary' ? 'sun' : 'planet'),
             position: pos,
             velocity: vel?.angular ?? 0,
             audioParams: audio.parameters,
+            visualConfig: {
+                color: visual.color,
+                size: visual.size,
+            },
             presetId: preset?.presetId
         };
     }, [selectedBodyId, version]);

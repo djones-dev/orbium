@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 class BodyInstanceBase(BaseModel):
+    name: Optional[str] = None
     preset_id: Optional[str] = None
     type: Literal['sun', 'planet', 'moon']
     position: Dict[str, float] # { radius: float, angle: float }
@@ -16,11 +17,13 @@ class BodyInstanceCreate(BodyInstanceBase):
     id: Optional[UUID] = None
 
 class BodyInstanceUpdate(BaseModel):
+    name: Optional[str] = None
     position: Optional[Dict[str, float]] = None
     velocity: Optional[float] = None
     audio_params: Optional[Dict[str, Any]] = None
     attributes: Optional[List[Dict[str, Any]]] = None
     parent_id: Optional[str] = None
+
 
 class BodyInstanceResponse(BodyInstanceBase):
     id: UUID

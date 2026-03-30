@@ -1,5 +1,4 @@
 import { OrbitalBody } from '../types/orbital';
-import { SunParameters } from '../types/audio';
 
 class BodyServiceError extends Error {
     constructor(message: string, public originalError?: any) {
@@ -41,15 +40,15 @@ export class BodyService {
             // Map backend response to Frontend OrbitalBody
             return bodies.map(b => ({
                 id: b.id,
+                name: b.name,
                 presetId: b.preset_id,
                 type: b.type,
                 position: b.position,
                 velocity: b.velocity,
-                audioParams: b.audio_params, // backend uses snake_case in dict? No, we defined it as audio_params in Pydantic but the dict content assumes matching frontend keys? 
-                // Wait, backend model has 'audio_params' field. content is Dict.
-                audioLayerId: `layer-${b.id}`, // specific to frontend runtime
+                audioParams: b.audio_params,
+                audioLayerId: `layer-${b.id}`,
                 visualConfig: {
-                    color: b.type === 'sun' ? '#FFD700' : b.type === 'planet' ? '#4169E1' : '#32CD32', // Default colors, should probably derive from type better
+                    color: b.type === 'sun' ? '#FFD700' : b.type === 'planet' ? '#4169E1' : '#32CD32',
                     size: b.type === 'sun' ? 50 : b.type === 'planet' ? 20 : 10,
                     shaderUniforms: {}
                 },
@@ -66,6 +65,7 @@ export class BodyService {
             // Map Frontend -> Backend
             const payload = {
                 id: body.id,
+                name: body.name,
                 preset_id: body.presetId,
                 type: body.type,
                 position: body.position,
@@ -85,6 +85,7 @@ export class BodyService {
             return {
                 ...body,
                 id: b.id,
+                name: b.name,
                 // Ensure we respect server returned values
                 position: b.position,
                 velocity: b.velocity,
@@ -95,11 +96,14 @@ export class BodyService {
         }
     }
 
-    async updateBody(id: string, params: Partial<SunParameters>): Promise<void> {
+    async updateBody(id: string, updates: Partial<OrbitalBody>): Promise<void> {
         try {
-            const payload = {
-                audio_params: params
-            };
+            // Map common properties to backend expectations
+            const payload: any = {};
+            if (updates.name !== undefined) payload.name = updates.name;
+            if (updates.audioParams !== undefined) payload.audio_params = updates.audioParams;
+            if (updates.position !== undefined) payload.position = updates.position;
+            if (updates.velocity !== undefined) payload.velocity = updates.velocity;
 
             const response = await fetch(`${this.baseUrl}/${id}`, {
                 method: 'PATCH',

@@ -35,6 +35,19 @@ export const ParameterEditor: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<'IDLE' | 'EDITING' | 'SAVING' | 'SAVED' | 'ERROR'>('IDLE');
     const pendingChangesRef = useRef<Partial<SunParameters>>({});
 
+    const [localName, setLocalName] = useState(selectedBody?.name || '');
+
+    // Sync local name when selected body changes
+    React.useEffect(() => {
+        setLocalName(selectedBody?.name || '');
+    }, [selectedBody?.id, selectedBody?.name]);
+
+    const handleNameCommit = () => {
+        if (selectedBody && localName !== selectedBody.name) {
+            manager.updateBodyName(selectedBody.id, localName);
+        }
+    };
+
     const [unitModes, setUnitModes] = useState<Record<string, UnitMode>>({
         rootFrequency: 'Hz',
         lfoRate: 'Hz',
@@ -56,7 +69,7 @@ export const ParameterEditor: React.FC = () => {
         pendingChangesRef.current = {};
         setSaveStatus('SAVING');
         try {
-            await bodyService.updateBody(id, changes);
+            await bodyService.updateBody(id, { audioParams: changes });
             setSaveStatus('SAVED');
             setTimeout(() => setSaveStatus(prev => prev === 'SAVED' ? 'IDLE' : prev), 2000);
         } catch (error) {
@@ -172,6 +185,32 @@ export const ParameterEditor: React.FC = () => {
 
             {/* --- LEFT SECTION: Modules (Horizontal) --- */}
             <div className="flex-1 flex gap-4 p-4 items-center overflow-x-auto">
+                
+                {/* IDENTITY / NAME */}
+                <div className="flex flex-col gap-3 p-3 border border-[var(--color-border)] rounded bg-black/20 flex-shrink-0 h-full justify-center relative min-w-max">
+                    <div className="absolute top-0 left-2 text-[9px] font-bold text-[var(--color-text-secondary)] tracking-widest -translate-y-1/2 bg-[var(--color-bg)] px-1">IDENTITY</div>
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] text-[var(--color-text-secondary)] uppercase">Label</label>
+                        <input
+                            type="text"
+                            value={localName}
+                            placeholder={selectedBody.type.toUpperCase()}
+                            onChange={(e) => setLocalName(e.target.value)}
+                            onBlur={handleNameCommit}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleNameCommit();
+                                    (e.target as HTMLInputElement).blur();
+                                }
+                            }}
+                            className="bg-black/40 border border-[var(--color-border)] text-[10px] p-1.5 outline-none text-[var(--color-accent-primary)] font-mono uppercase w-32 rounded hover:border-[var(--color-accent-secondary)] transition-colors focus:border-[var(--color-accent-primary)]"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: selectedBody.visualConfig.color }} />
+                        <span className="text-[9px] text-[var(--color-text-secondary)] font-mono uppercase">{selectedBody.type}</span>
+                    </div>
+                </div>
 
                 {/* OSCILLATOR */}
                 {isGenerator && (

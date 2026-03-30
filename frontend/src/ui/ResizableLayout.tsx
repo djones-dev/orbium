@@ -5,6 +5,7 @@ import { useUIStore } from '../stores/uiStore';
 
 const PresetBrowser = lazy(() => import('./PresetBrowser').then(module => ({ default: module.PresetBrowser })));
 const ParameterEditor = lazy(() => import('./ParameterEditor').then(module => ({ default: module.ParameterEditor })));
+const MixerPane = lazy(() => import('./MixerTab').then(module => ({ default: module.MixerTab })));
 
 const LoadingPane = ({ label }: { label: string }) => (
     <div className="h-full flex items-center justify-center text-[var(--color-text-secondary)] font-mono text-xs opacity-50">
@@ -20,10 +21,13 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
     const setSaveModalOpen = useUIStore(state => state.setSaveModalOpen);
     const [sidebarWidth, setSidebarWidth] = useState(20); // percentage
     const [inspectorHeight, setInspectorHeight] = useState(250); // pixels
+    const [parametersHeight, setParametersHeight] = useState(250); // pixels
+    const [mixerHeight, setMixerHeight] = useState(350); // pixels
     const [bottomLeftVisible, setBottomLeftVisible] = useState(true);
+    const [mixerVisible, setMixerVisible] = useState(true);
     const [bottomVisible, setBottomVisible] = useState(true);
 
-    const dragInfo = useRef<{ type: 'width' | 'height' | null; startPos: number; startVal: number }>({
+    const dragInfo = useRef<{ type: 'width' | 'height' | 'mixer' | 'params' | null; startPos: number; startVal: number }>({
         type: null,
         startPos: 0,
         startVal: 0
@@ -47,6 +51,24 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
         e.preventDefault();
     };
 
+    const onMixerMouseDown = (e: React.MouseEvent) => {
+        dragInfo.current = {
+            type: 'mixer',
+            startPos: e.clientY,
+            startVal: mixerHeight
+        };
+        e.preventDefault();
+    };
+
+    const onParamsMouseDown = (e: React.MouseEvent) => {
+        dragInfo.current = {
+            type: 'params',
+            startPos: e.clientY,
+            startVal: parametersHeight
+        };
+        e.preventDefault();
+    };
+
     const onMouseMove = (e: MouseEvent) => {
         const { type, startPos, startVal } = dragInfo.current;
         if (!type) return;
@@ -59,6 +81,14 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
             const deltaY = startPos - e.clientY; // upwards increases height
             const newHeight = Math.min(600, Math.max(100, startVal + deltaY));
             setInspectorHeight(newHeight);
+        } else if (type === 'mixer') {
+            const deltaY = startPos - e.clientY;
+            const newHeight = Math.min(600, Math.max(350, startVal + deltaY));
+            setMixerHeight(newHeight);
+        } else if (type === 'params') {
+            const deltaY = startPos - e.clientY;
+            const newHeight = Math.min(600, Math.max(250, startVal + deltaY));
+            setParametersHeight(newHeight);
         }
     };
 
@@ -92,15 +122,6 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                                 </svg>
                             </button>
-                            {!bottomLeftVisible && (
-                                <button
-                                    className="pane-toggle"
-                                    onClick={() => setBottomLeftVisible(true)}
-                                    title="Show Bottom-Left"
-                                >
-                                    ＋
-                                </button>
-                            )}
                         </div>
                     </div>
                     <div className="pane-content">
@@ -112,9 +133,7 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
 
                 {bottomLeftVisible && (
                     <>
-                        {/* Horizontal Drag Handle for Inspector Height */}
                         <div className="drag-handle-horizontal" onMouseDown={onHeightMouseDown} />
-
                         <div className="pane bottom-left-panel" style={{ height: `${inspectorHeight}px` }}>
                             <div className="pane-header-container inspector-header">
                                 <h2 className="pane-header">Inspector</h2>
@@ -132,8 +151,19 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                         </div>
                     </>
                 )}
-            </div>
 
+                {/* Left Column Dock */}
+                {!bottomLeftVisible && (
+                    <div className="h-8 flex items-center px-2 gap-2 border-t border-[var(--color-border)] bg-[var(--color-bg)]">
+                        <button
+                            className="px-3 py-1 text-[9px] font-bold tracking-tighter uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] transition-all rounded bg-white/[0.05]"
+                            onClick={() => setBottomLeftVisible(true)}
+                        >
+                            ＋ INSPECTOR
+                        </button>
+                    </div>
+                )}
+            </div>
 
             {/* Vertical Drag Handle */}
             <div className="drag-handle" onMouseDown={onWidthMouseDown} />
@@ -143,37 +173,77 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                 <div className="pane main-view">
                     <div className="pane-header-container">
                         <h2 className="pane-header">Main View</h2>
-                        {!bottomVisible && (
-                            <button
-                                className="pane-toggle"
-                                onClick={() => setBottomVisible(true)}
-                                title="Show Bottom Panel"
-                            >
-                                ＋
-                            </button>
-                        )}
                     </div>
                     <div className="pane-content main-content">
                         {children}
                     </div>
                 </div>
+
                 {bottomVisible && (
-                    <div className="pane bottom-panel">
-                        <div className="pane-header-container">
-                            <h2 className="pane-header">PARAMETERS</h2>
+                    <>
+                        <div className="drag-handle-horizontal" onMouseDown={onParamsMouseDown} />
+                        <div className="pane bottom-panel" style={{ height: `${parametersHeight}px` }}>
+                            <div className="pane-header-container">
+                                <h2 className="pane-header">PARAMETERS</h2>
+                                <button
+                                    className="pane-toggle"
+                                    onClick={() => setBottomVisible(false)}
+                                    title="Hide Bottom Panel"
+                                >
+                                    －
+                                </button>
+                            </div>
+                            <div className="pane-content p-0 overflow-hidden">
+                                <Suspense fallback={<LoadingPane label="PARAMETERS" />}>
+                                    <ParameterEditor />
+                                </Suspense>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {mixerVisible && (
+                    <>
+                        <div className="drag-handle-horizontal" onMouseDown={onMixerMouseDown} />
+                        <div className="pane mixer-panel" style={{ height: `${mixerHeight}px` }}>
+                            <div className="pane-header-container">
+                                <h2 className="pane-header">MIXER</h2>
+                                <button
+                                    className="pane-toggle"
+                                    onClick={() => setMixerVisible(false)}
+                                    title="Hide Mixer"
+                                >
+                                    －
+                                </button>
+                            </div>
+                            <div className="pane-content p-0 overflow-hidden">
+                                <Suspense fallback={<LoadingPane label="MIXER" />}>
+                                    <MixerPane />
+                                </Suspense>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Right Column Dock */}
+                {(!bottomVisible || !mixerVisible) && (
+                    <div className="h-8 flex items-center px-3 gap-3 border-t border-[var(--color-border)] bg-[var(--color-bg)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                        {!bottomVisible && (
                             <button
-                                className="pane-toggle"
-                                onClick={() => setBottomVisible(false)}
-                                title="Hide Bottom Panel"
+                                className="px-3 py-1 text-[9px] font-bold tracking-widest uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-accent-primary)]/5 transition-all rounded bg-white/[0.05] flex items-center gap-1.5"
+                                onClick={() => setBottomVisible(true)}
                             >
-                                －
+                                <span className="text-[10px]">＋</span> PARAMETERS
                             </button>
-                        </div>
-                        <div className="pane-content p-0 overflow-hidden">
-                            <Suspense fallback={<LoadingPane label="PARAMETERS" />}>
-                                <ParameterEditor />
-                            </Suspense>
-                        </div>
+                        )}
+                        {!mixerVisible && (
+                            <button
+                                className="px-3 py-1 text-[9px] font-bold tracking-widest uppercase border border-[var(--color-border)] hover:border-[var(--color-accent-primary)] hover:text-[var(--color-accent-primary)] hover:bg-[var(--color-accent-primary)]/5 transition-all rounded bg-white/[0.05] flex items-center gap-1.5"
+                                onClick={() => setMixerVisible(true)}
+                            >
+                                <span className="text-[10px]">＋</span> MIXER
+                            </button>
+                        )}
                     </div>
                 )}
             </div>
