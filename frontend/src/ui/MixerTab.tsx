@@ -2,12 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import { OrbitalBody } from '../types/orbital';
 import { TerminalVerticalSlider } from './terminal/TerminalVerticalSlider';
 import { useSelection } from '../contexts/SelectionContext';
+import { useUIStore } from '../stores/uiStore';
 import { AudioEngine } from '../audio/AudioEngine';
 
 export const MixerTab: React.FC = () => {
     const { manager } = useSelection();
     const [bodies, setBodies] = useState<OrbitalBody[]>(manager.getBodies());
-    const [masterGain, setMasterGain] = useState(0.8);
+    
+    const masterGain = useUIStore(state => state.masterGain);
+    const setMasterGain = useUIStore(state => state.setMasterGain);
+
     const [levels, setLevels] = useState<Record<string, number>>({});
     const requestRef = useRef<number>();
     const audioEngine = AudioEngine.getInstance();

@@ -17,6 +17,8 @@ interface UIState {
     showToast: (message: string, type: 'success' | 'error') => void;
     debug: boolean;
     setDebug: (debug: boolean) => void;
+    masterGain: number;
+    setMasterGain: (gain: number) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -38,4 +40,9 @@ export const useUIStore = create<UIState>((set) => ({
     },
     debug: false,
     setDebug: (debug) => set({ debug }),
+    masterGain: parseFloat(localStorage.getItem('orbium_master_gain') || '0.8'),
+    setMasterGain: (masterGain) => {
+        localStorage.setItem('orbium_master_gain', masterGain.toString());
+        set({ masterGain });
+    },
 }));
