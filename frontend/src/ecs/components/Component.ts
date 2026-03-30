@@ -5,6 +5,7 @@ export enum ComponentType {
     Visual = 'visual',
     Hierarchy = 'hierarchy',
     Preset = 'preset',
+    Physics = 'physics',
 }
 
 /** Marker interface — all components carry their discriminant type. */
