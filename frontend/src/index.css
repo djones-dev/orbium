@@ -1,9 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Neo Modern Terminal Theme */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
     /* Color Palette: Deep Space & Amber Warning */
@@ -18,45 +20,55 @@
     /* High Contrast Text */
     --color-text-secondary: #a1a1aa;
     /* Muted Text */
-    --color-text-highlight: #fafafa;
+    --color-text-muted: #52525b;
+    /* Very Muted */
 
-    --color-accent-primary: #f59e0b;
-    /* Amber/Orange - The "Neo" glow */
-    --color-accent-secondary: #71717a;
-    /* Neutral Gray Accent */
-    --color-accent-audio: #ef4444;
-    /* Red for Active Audio/Recording */
+    --color-accent-primary: #33ff33;
+    /* Phosphor Green */
+    --color-accent-secondary: #10b981;
+    /* Emerald */
+    --color-accent-warning: #f59e0b;
+    /* Amber */
+    --color-accent-audio: #3b82f6;
+    /* Blue Pulse */
 
-    --font-ui: 'Inter', sans-serif;
-    --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+    --shadow-neon: 0 0 10px rgba(51, 255, 51, 0.2);
+}
 
-    background-color: var(--color-bg);
-    color: var(--color-text-primary);
-    font-family: var(--font-ui);
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-    margin: 0;
-    padding: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    overflow: hidden;
+    /* Handled by React Layout */
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar Styling */
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Scrollbar styling for that terminal look */
 ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 4px;
+    height: 4px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--color-bg);
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--color-border);
-    border-radius: 3px;
+    border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-accent-secondary);
+    background: var(--color-text-muted);
 }

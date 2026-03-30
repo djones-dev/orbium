@@ -34,11 +34,6 @@ export const TerminalButton: React.FC<TerminalButtonProps> = ({
         ${className}
       `}
     >
-      {/* Active Indicator Line */}
-      {active && (
-        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--color-accent-primary)]"></div>
-      )}
-
       {children}
     </button>
   );

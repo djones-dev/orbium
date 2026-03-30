@@ -1,11 +1,17 @@
 import Layout from './ui/Layout'
 import Scene from './visualization/Scene'
+import { SelectionProvider } from './contexts/SelectionContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 function App() {
     return (
-        <Layout>
-            <Scene />
-        </Layout>
+        <ErrorBoundary>
+            <SelectionProvider>
+                <Layout>
+                    <Scene />
+                </Layout>
+            </SelectionProvider>
+        </ErrorBoundary>
     )
 }
 

@@ -61,4 +61,9 @@ docker-compose.override.yml
 # (If we successfully mapped postgres locally instead of named volume in future)
 postgres_data/
 
+# AI Assistant Files
+CLAUDE.md
+GEMINI.md
 REFERENCE/
+
+docs/AGENT_HANDOFF.md

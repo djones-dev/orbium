@@ -11,6 +11,7 @@ type RootMode = 'HZ' | 'NOTE';
 
 export const SunPanel: React.FC = () => {
     const { engine, isAudioActive } = useAudioEngine();
+    const SUN_ID = 'sun-primary';
 
     // Initial State must match AudioEngine default
     const [params, setParams] = useState<SunParameters>({
@@ -24,7 +25,8 @@ export const SunPanel: React.FC = () => {
         noiseVol: -40,
         subVol: -12,
         noiseEnabled: true,
-        subEnabled: true
+        subEnabled: true,
+        filterResonance: 1.0,
     });
 
     // UI State
@@ -41,7 +43,7 @@ export const SunPanel: React.FC = () => {
     const handleParamChange = (key: keyof SunParameters, value: number | string | boolean) => {
         const newParams = { ...params, [key]: value };
         setParams(newParams);
-        engine.updateSunParams({ [key]: value });
+        engine.bodiesManager.updateBodyParams(SUN_ID, { [key]: value });
     };
 
     // Special handler for Root Frequency to support modes

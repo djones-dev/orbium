@@ -8,6 +8,7 @@ uniform float uTime;
 uniform float uPulseSpeed;    // Match vertex shader
 uniform float uGlowIntensity;
 uniform float uOpacity;       // For smooth fade-in
+uniform float uSelected;
 
 varying float vDisplacement;
 varying vec3 vNormal;         
@@ -48,7 +49,11 @@ void main() {
   // Add spike-tip luminescence
   finalColor += uGlowColor * spikeGlow * 0.2 * timeFactor;
 
-  // 6. Refinement & Tone Mapping
+  // 6. Selection Highlight
+  // Add a bright white/glow overlay if selected
+  finalColor += vec3(1.0, 1.0, 1.0) * fresnel * uSelected * 0.5;
+
+  // 7. Refinement & Tone Mapping
   finalColor += uGlowColor * 0.05 * uGlowIntensity; // Subtle ambient
   finalColor = finalColor / (finalColor + vec3(1.0));
   finalColor = pow(finalColor, vec3(1.0 / 2.2)); // Gamma correction
