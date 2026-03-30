@@ -9,6 +9,7 @@ import { createVisualComponent, VisualComponent } from '../ecs/components/Visual
 import { createHierarchyComponent, HierarchyComponent } from '../ecs/components/HierarchyComponent';
 import { createPresetComponent, PresetComponent } from '../ecs/components/PresetComponent';
 import { createPhysicsComponent, PhysicsComponent } from '../ecs/components/PhysicsComponent';
+import { createColliderComponent, ColliderComponent } from '../ecs/components/ColliderComponent';
 
 /**
  * OrbitalBodiesAdapter — the bridge between the legacy OrbitalBody API and
@@ -46,6 +47,7 @@ export class OrbitalBodiesAdapter {
         em.addComponent(body.id, createHierarchyComponent(body.parentId ?? null));
         em.addComponent(body.id, createPresetComponent(body.type, body.presetId));
         em.addComponent(body.id, createPhysicsComponent(1, 0.999));
+        em.addComponent(body.id, createColliderComponent(body.visualConfig.size));
     }
 
     /** Remove the entity and all its components from the ECS World. */
