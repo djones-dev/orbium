@@ -128,22 +128,26 @@ each frame in priority order:
 | System | Priority | Responsibility |
 |--------|----------|----------------|
 | `HierarchySystem` | 50 | Update child positions relative to parent |
-| `PhysicsSystem` | 90 | Apply forces, update velocity |
+| `PhysicsSystem` | 90 | Apply forces, gravity, update velocity |
 | `MovementSystem` | 100 | Apply velocity to position |
 | `CollisionSystem` | 150 | Detect proximity and emit events |
+| `ModulationSystem` | 180 | Route modulation between entities |
 | `AudioSystem` | 200 | Sync audio layers with component state |
-| `ModulationSystem` | 250 | Route modulation between entities |
 | `RenderSystem` | 300 | Prepare Cartesian positions for Three.js |
 
 **Example — querying movable entities:**
 
 ```typescript
-const movable = entityManager.query([
-    ComponentType.POSITION,
-    ComponentType.VELOCITY,
-]);
-for (const entity of movable) {
-    position.angle += velocity.angular * dt;
+const movable = entityManager.query(
+    ComponentType.Position,
+    ComponentType.Velocity,
+);
+for (const id of movable) {
+    const pos = entityManager.getComponent<PositionComponent>(id, ComponentType.Position);
+    const vel = entityManager.getComponent<VelocityComponent>(id, ComponentType.Velocity);
+    if (pos && vel) {
+        pos.angle += vel.angular * dt;
+    }
 }
 ```
 
@@ -159,10 +163,10 @@ Communication with the simulation layer is decoupled through an `EventBus`:
 
 ```typescript
 // Simulation emits
-eventBus.emit(AudioEventType.BODY_ADDED, { body });
+eventBus.emit<BodyAddedEvent>(AudioEventType.BODY_ADDED, { body });
 
 // AudioEngine reacts
-eventBus.on(AudioEventType.BODY_ADDED, ({ body }) => {
+eventBus.on<BodyAddedEvent>(AudioEventType.BODY_ADDED, ({ body }) => {
     this.createLayerForBody(body);
 });
 ```
@@ -174,7 +178,7 @@ eventBus.on(AudioEventType.BODY_ADDED, ({ body }) => {
 ### Adding a New Audio Parameter
 
 1. Add to `SunParameters` in `frontend/src/types/audio.ts`
-2. Handle in `SunLayer.updateParams()` (`frontend/src/audio/SunLayer.ts`)
+2. Handle in `SunLayer.updateParams()` (`frontend/src/audio/layers/SunLayer.ts`)
 3. Add UI control in `SunPanel.tsx` or `ParameterEditor.tsx`
 4. Update shader uniform in `visualization/Sun.tsx` if visual feedback needed
 
@@ -182,22 +186,22 @@ eventBus.on(AudioEventType.BODY_ADDED, ({ body }) => {
 
 1. Create interface in `frontend/src/ecs/components/`
 2. Add to `ComponentType` enum in `ecs/components/Component.ts`
-3. Export from `ecs/components/index.ts`
+3. Export from `ecs/components/` (no index.ts, import directly)
 
 ### Adding a New ECS System
 
-1. Extend `BaseSystem` in `frontend/src/ecs/systems/`
+1. Extend `System` in `frontend/src/ecs/systems/`
 2. Implement `update(entityManager, deltaTime)` with component queries
 3. Register in `frontend/src/ecs/World.ts` with appropriate priority
 
 ### Running Tests
 
 ```bash
-# Frontend
-cd frontend && npm test -- --run
+# Frontend (manual offline DSP tests)
+cd frontend && npm run test:audio
 
-# Backend
-cd backend && pytest -v
+# Frontend (unit/integration tests)
+cd frontend && npm test
 ```
 
 ---
@@ -209,9 +213,10 @@ cd backend && pytest -v
 - [x] Terminal-style UI (phosphor aesthetic, box-drawing characters)
 - [x] Preset system with backend persistence
 - [x] ECS architecture foundation
-- [ ] Force-based orbital physics (gravity, perturbations)
-- [ ] Parent-child hierarchies (moons orbiting planets)
-- [ ] Proximity collision events with audio modulation
+- [x] Force-based orbital physics (gravity, perturbations)
+- [x] Parent-child hierarchies (moons orbiting planets)
+- [x] Proximity collision events with audio modulation
+- [x] Real-time parameter modulation routing
 - [ ] Asteroid fields (granular synthesis via AudioWorklets)
 - [ ] Comets (long-period elliptical orbits)
 - [ ] Global tempo multiplier
