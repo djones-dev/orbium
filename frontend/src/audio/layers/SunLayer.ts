@@ -33,9 +33,12 @@ export class SunLayer implements AudioLayer {
     private lfo: OscillatorNode;
     private lfoGain: GainNode;
 
-    private delayNode: DelayNode;
-    private delayGain: GainNode;
-    private delayFeedback: GainNode;
+    private reverbNode: ConvolverNode;
+    private reverbGain: GainNode;
+    
+    private phaserFilters: BiquadFilterNode[] = [];
+    private phaserLFO: OscillatorNode;
+    private phaserGain: GainNode;
 
     private params: SunParameters = {
         rootFrequency: 110,
@@ -67,22 +70,46 @@ export class SunLayer implements AudioLayer {
         this.filter.type = 'lowpass';
         this.filter.Q.value = 1.0;
 
-        // Effects Chain
-        this.delayNode = context.createDelay(1.0);
-        this.delayNode.delayTime.value = 0.4;
-        this.delayGain = context.createGain();
-        this.delayGain.gain.value = 0;
-        this.delayFeedback = context.createGain();
-        this.delayFeedback.gain.value = 0.4;
+        // --- Reverb ---
+        this.reverbNode = context.createConvolver();
+        this.reverbNode.buffer = this.createImpulseResponse(2.0, 2.0);
+        this.reverbGain = context.createGain();
+        this.reverbGain.gain.value = 0;
+        
+        this.filter.connect(this.reverbNode);
+        this.reverbNode.connect(this.reverbGain);
+        this.reverbGain.connect(this.outputGain);
+
+        // --- Phaser ---
+        this.phaserGain = context.createGain();
+        this.phaserGain.gain.value = 0;
+        
+        // 4 stages of all-pass filters
+        for (let i = 0; i < 4; i++) {
+            const ap = context.createBiquadFilter();
+            ap.type = 'allpass';
+            ap.frequency.value = 1000 + i * 200;
+            this.phaserFilters.push(ap);
+        }
+
+        // Chain phasers
+        this.filter.connect(this.phaserFilters[0]);
+        for (let i = 0; i < 3; i++) {
+            this.phaserFilters[i].connect(this.phaserFilters[i+1]);
+        }
+        this.phaserFilters[3].connect(this.phaserGain);
+        this.phaserGain.connect(this.outputGain);
+
+        // Phaser LFO
+        this.phaserLFO = context.createOscillator();
+        this.phaserLFO.frequency.value = 0.5;
+        const phaserLFOGain = context.createGain();
+        phaserLFOGain.gain.value = 500;
+        this.phaserLFO.connect(phaserLFOGain);
+        this.phaserFilters.forEach(ap => phaserLFOGain.connect(ap.frequency));
+        this.phaserLFO.start();
 
         this.filter.connect(this.outputGain);
-        
-        // Delay loop
-        this.filter.connect(this.delayNode);
-        this.delayNode.connect(this.delayFeedback);
-        this.delayFeedback.connect(this.delayNode);
-        this.delayNode.connect(this.delayGain);
-        this.delayGain.connect(this.outputGain);
 
         this.distortionNode = context.createWaveShaper();
         this.distortionNode.oversample = '4x';
@@ -173,6 +200,22 @@ export class SunLayer implements AudioLayer {
         return curve;
     }
 
+    private createImpulseResponse(duration: number, decay: number): AudioBuffer {
+        const sampleRate = this.context.sampleRate;
+        const length = sampleRate * duration;
+        const impulse = this.context.createBuffer(2, length, sampleRate);
+        const left = impulse.getChannelData(0);
+        const right = impulse.getChannelData(1);
+
+        for (let i = 0; i < length; i++) {
+            const n = i / length;
+            const envelope = Math.pow(1 - n, decay);
+            left[i] = (Math.random() * 2 - 1) * envelope;
+            right[i] = (Math.random() * 2 - 1) * envelope;
+        }
+        return impulse;
+    }
+
     updateParams(newParams: Partial<SunParameters>): void {
         const prev = this.params;
         this.params = { ...this.params, ...newParams };
@@ -212,8 +255,8 @@ export class SunLayer implements AudioLayer {
 
         // Handle Effects
         if (effects) {
-            const hasDelay = effects.includes('delay') || effects.includes('reverb');
-            this.delayGain.gain.setTargetAtTime(hasDelay ? 0.4 : 0, now, ramp);
+            this.reverbGain.gain.setTargetAtTime(effects.includes('reverb') ? 0.6 : 0, now, ramp);
+            this.phaserGain.gain.setTargetAtTime(effects.includes('phaser') ? 0.7 : 0, now, ramp);
             
             if (effects.includes('distortion')) {
                 this.distortionNode.curve = this.makeTanhCurve(80);
@@ -252,6 +295,7 @@ export class SunLayer implements AudioLayer {
         this.osc3.stop();
         this.subOsc.stop();
         this.lfo.stop();
+        this.phaserLFO.stop();
         this.noiseNode.disconnect();
         this.analyser.disconnect();
         this.disconnect();

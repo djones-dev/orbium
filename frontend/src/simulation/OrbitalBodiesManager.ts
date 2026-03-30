@@ -125,8 +125,8 @@ export class OrbitalBodiesManager {
         // For immediate feedback and non-modulated entities:
         audio.parameters = { ...audio.parameters, ...params };
 
-        // If modTarget or modDepth changed, update ModulationComponent routes
-        if (params.modTarget !== undefined || params.modDepth !== undefined) {
+        // If modTarget, modDepth, or modType changed, update ModulationComponent routes
+        if (params.modTarget !== undefined || params.modDepth !== undefined || params.modType !== undefined) {
             let modComp = em.getComponent<ModulationComponent>(id, ComponentType.Modulation);
             const hierarchy = em.getComponent<HierarchyComponent>(id, ComponentType.Hierarchy);
             const preset = em.getComponent<PresetComponent>(id, ComponentType.Preset);
@@ -134,10 +134,12 @@ export class OrbitalBodiesManager {
             if (hierarchy?.parentId && (preset?.bodyType === 'moon' || id.startsWith('moon-'))) {
                 const target = params.modTarget ?? audio.baseParameters.modTarget;
                 const depth = params.modDepth ?? audio.baseParameters.modDepth;
+                const modType = params.modType ?? audio.baseParameters.modType ?? 'lfo';
                 
                 if (target && depth !== undefined) {
                     const routes: ModulationRoute[] = [{
                         sourceType: 'orbit',
+                        modType,
                         targetEntityId: hierarchy.parentId,
                         targetParam: target as keyof SunParameters,
                         depth: depth / 100,
@@ -204,9 +206,11 @@ export class OrbitalBodiesManager {
             const preset = await AudioEngine.getInstance().presets.getPresetById(attributePresetId);
             if (!preset) return;
 
-            const effectType = (preset.name.toLowerCase().includes('distortion') || preset.id.includes('distortion')) ? 'distortion' 
-                             : (preset.name.toLowerCase().includes('sweep') || preset.id.includes('filter')) ? 'atmosphere'
-                             : 'delay' as EffectType;
+            const name = preset.name.toLowerCase();
+            const effectType = (name.includes('phaser')) ? 'phaser' 
+                             : (name.includes('reverb')) ? 'reverb'
+                             : (name.includes('sweep') || name.includes('atmosphere')) ? 'atmosphere'
+                             : 'reverb' as EffectType;
 
             const currentEffects = audio.baseParameters.effects || [];
             if (!currentEffects.includes(effectType)) {
@@ -267,14 +271,16 @@ export class OrbitalBodiesManager {
             if (body.audioParams.modDepth !== undefined && body.audioParams.modTarget) {
                 routes.push({
                     sourceType: 'orbit',
+                    modType: body.audioParams.modType ?? 'lfo',
                     targetEntityId: body.parentId,
                     targetParam: body.audioParams.modTarget as keyof SunParameters,
                     depth: body.audioParams.modDepth / 100, // normalized 0-1
                 });
-            } else if (body.presetType === 'effect' || body.presetType === 'modulator') {
+            } else if (body.presetType === 'modulator') {
                 // Fallback: default modulation for these types if not explicitly configured
                 routes.push({
                     sourceType: 'orbit',
+                    modType: 'lfo',
                     targetEntityId: body.parentId,
                     targetParam: 'filterCutoff',
                     depth: 0.3,

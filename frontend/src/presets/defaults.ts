@@ -55,13 +55,13 @@ export const DEFAULT_PRESETS: Preset[] = [
     // Moon Modulators
     {
         id: 'moon-slow-pulse',
-        name: 'Slow Orbital Pulse',
-        description: 'Slow LFO modulation for evolving textures.',
+        name: 'Slow Orbital LFO',
+        description: 'Slow LFO modulation synced to orbit.',
         type: 'modulator',
         category: 'moon',
         parameters: {
             lfoRate: 0.5,
-            detuneSpread: 10,
+            modType: 'lfo',
             modDepth: 30,
             modTarget: 'filterCutoff'
         },
@@ -71,15 +71,18 @@ export const DEFAULT_PRESETS: Preset[] = [
     },
     {
         id: 'moon-fast-shiver',
-        name: 'Rapid Shiver',
-        description: 'Fast LFO rate for vibrating, energetic effects.',
+        name: 'Triggered ADSR',
+        description: 'ADSR envelope triggered every orbit.',
         type: 'modulator',
         category: 'moon',
         parameters: {
-            lfoRate: 8.0,
-            detuneSpread: 25,
-            modDepth: 15,
-            modTarget: 'rootFrequency'
+            modType: 'adsr',
+            modDepth: 80,
+            modTarget: 'gainLevel',
+            attack: 0.05,
+            decay: 0.2,
+            sustain: 0.1,
+            release: 0.8
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
@@ -87,29 +90,26 @@ export const DEFAULT_PRESETS: Preset[] = [
     },
     // Attributes
     {
-        id: 'attr-filter-sweep',
-        name: 'Atmospheric Sweep',
-        description: 'Pushed filter resonant sweep for cinematic reveals.',
+        id: 'attr-phaser-sweep',
+        name: 'Cosmic Phaser',
+        description: 'Classic phaser effect for swirling textures.',
         type: 'effect',
         category: 'attribute',
         parameters: {
-            filterCutoff: 400,
-            gainLevel: -3
+            effects: ['phaser']
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
         updated_at: new Date(now).toISOString()
     },
     {
-        id: 'attr-heavy-dist',
-        name: 'Solar Flare',
-        description: 'High distortion and noise for chaotic, gritty sounds.',
+        id: 'attr-heavy-reverb',
+        name: 'Galactic Reverb',
+        description: 'Deep spatial reverb for immense scale.',
         type: 'effect',
         category: 'attribute',
         parameters: {
-            distortion: 80,
-            noiseEnabled: true,
-            noiseVol: -20
+            effects: ['reverb']
         },
         is_default: true,
         created_at: new Date(now).toISOString(),

@@ -274,7 +274,36 @@ export const ParameterEditor: React.FC = () => {
                     </div>
                 )}
 
-                {/* FILTER / DRIVE / LFO */}
+                {/* EFFECTS */}
+                {isGenerator && (
+                    <div className="flex gap-4 p-3 border border-[var(--color-border)] rounded bg-black/20 flex-shrink-0 h-full items-center relative min-w-max">
+                        <div className="absolute top-0 left-2 text-[9px] font-bold text-[var(--color-text-secondary)] tracking-widest -translate-y-1/2 bg-[var(--color-bg)] px-1">EFFECTS</div>
+                        <div className="flex flex-col gap-2 w-24">
+                            <TerminalToggle
+                                label="PHASER"
+                                checked={!!audioParams.effects?.includes('phaser')}
+                                onChange={(v) => {
+                                    const current = audioParams.effects || [];
+                                    const next = v ? [...current, 'phaser' as const] : current.filter(e => e !== 'phaser');
+                                    onParamChange('effects', next);
+                                    onParamCommit();
+                                }}
+                            />
+                            <TerminalToggle
+                                label="REVERB"
+                                checked={!!audioParams.effects?.includes('reverb')}
+                                onChange={(v) => {
+                                    const current = audioParams.effects || [];
+                                    const next = v ? [...current, 'reverb' as const] : current.filter(e => e !== 'reverb');
+                                    onParamChange('effects', next);
+                                    onParamCommit();
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* FILTER / DRIVE / MODULATOR */}
                 {(isGenerator || isModulator) && (
                     <div className="flex gap-4 p-3 border border-[var(--color-border)] rounded bg-black/20 flex-shrink-0 h-full items-center relative min-w-max">
                         <div className="absolute top-0 left-2 text-[9px] font-bold text-[var(--color-text-secondary)] tracking-widest -translate-y-1/2 bg-[var(--color-bg)] px-1">
@@ -309,29 +338,108 @@ export const ParameterEditor: React.FC = () => {
                             </>
                         ) : (
                             <>
-                                {renderFrequencyControl('lfoRate', 'RATE', 0.1, 20, 52)}
-                                <TerminalKnob
-                                    label="DEPTH"
-                                    value={getParam('modDepth', 0)}
-                                    min={0}
-                                    max={100}
-                                    onChange={(v) => onParamChange('modDepth', v)}
-                                    onCommit={onParamCommit}
-                                    formatValue={(v) => `${v.toFixed(0)}%`}
-                                    size={40}
-                                />
+                                <div className="flex flex-col gap-2 w-24">
+                                    <div className="text-[9px] text-[var(--color-text-secondary)] opacity-80 uppercase tracking-tighter">Mode</div>
+                                    <div className="flex border border-[var(--color-border)]/30 rounded overflow-hidden">
+                                        <button 
+                                            onClick={() => { onParamChange('modType', 'lfo'); onParamCommit(); }}
+                                            className={`flex-1 text-[8px] py-1 font-bold ${audioParams.modType !== 'adsr' ? 'bg-[var(--color-accent-primary)] text-black' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
+                                        >
+                                            LFO
+                                        </button>
+                                        <button 
+                                            onClick={() => { onParamChange('modType', 'adsr'); onParamCommit(); }}
+                                            className={`flex-1 text-[8px] py-1 font-bold ${audioParams.modType === 'adsr' ? 'bg-[var(--color-accent-primary)] text-black' : 'hover:bg-white/5 text-[var(--color-text-secondary)]'}`}
+                                        >
+                                            ADSR
+                                        </button>
+                                    </div>
+                                    
+                                    {audioParams.modType !== 'adsr' ? (
+                                        renderFrequencyControl('lfoRate', 'RATE', 0.1, 20, 44)
+                                    ) : (
+                                        <div className="flex items-center justify-center h-[60px] text-[8px] text-[var(--color-accent-primary)] font-bold text-center leading-tight">
+                                            TRIGGERED BY<br/>ORBIT
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="w-px bg-[var(--color-border)] opacity-20 h-2/3"></div>
+
+                                {audioParams.modType === 'adsr' ? (
+                                    <div className="flex gap-2 items-center">
+                                        <TerminalKnob
+                                            label="A"
+                                            value={getParam('attack', 0.1)}
+                                            min={0.01}
+                                            max={2}
+                                            onChange={(v) => onParamChange('attack', v)}
+                                            onCommit={onParamCommit}
+                                            formatValue={(v) => `${v.toFixed(2)}s`}
+                                            size={32}
+                                        />
+                                        <TerminalKnob
+                                            label="D"
+                                            value={getParam('decay', 0.2)}
+                                            min={0.01}
+                                            max={2}
+                                            onChange={(v) => onParamChange('decay', v)}
+                                            onCommit={onParamCommit}
+                                            formatValue={(v) => `${v.toFixed(2)}s`}
+                                            size={32}
+                                        />
+                                        <TerminalKnob
+                                            label="S"
+                                            value={getParam('sustain', 0.5)}
+                                            min={0}
+                                            max={1}
+                                            onChange={(v) => onParamChange('sustain', v)}
+                                            onCommit={onParamCommit}
+                                            formatValue={(v) => `${v.toFixed(1)}`}
+                                            size={32}
+                                        />
+                                        <TerminalKnob
+                                            label="R"
+                                            value={getParam('release', 0.5)}
+                                            min={0.01}
+                                            max={4}
+                                            onChange={(v) => onParamChange('release', v)}
+                                            onCommit={onParamCommit}
+                                            formatValue={(v) => `${v.toFixed(2)}s`}
+                                            size={32}
+                                        />
+                                    </div>
+                                ) : (
+                                    <TerminalKnob
+                                        label="DEPTH"
+                                        value={getParam('modDepth', 0)}
+                                        min={0}
+                                        max={100}
+                                        onChange={(v) => onParamChange('modDepth', v)}
+                                        onCommit={onParamCommit}
+                                        formatValue={(v) => `${v.toFixed(0)}%`}
+                                        size={40}
+                                    />
+                                )}
+
                                 <div className="w-px bg-[var(--color-border)] opacity-20 h-2/3"></div>
                                 <div className="flex flex-col gap-2 w-36">
-                                    <TerminalSelect
-                                        label="SHAPE"
-                                        value={getStringParam('waveform', 'sine')}
-                                        options={WAVEFORM_OPTIONS}
-                                        onChange={(v) => { onParamChange('waveform', v); onParamCommit(); }}
-                                    />
                                     <ModulationTargetPicker
                                         value={getStringParam('modTarget', 'filterCutoff')}
                                         onChange={(v) => { onParamChange('modTarget', v); onParamCommit(); }}
                                     />
+                                    {audioParams.modType === 'adsr' && (
+                                        <TerminalKnob
+                                            label="DEPTH"
+                                            value={getParam('modDepth', 0)}
+                                            min={0}
+                                            max={100}
+                                            onChange={(v) => onParamChange('modDepth', v)}
+                                            onCommit={onParamCommit}
+                                            formatValue={(v) => `${v.toFixed(0)}%`}
+                                            size={32}
+                                        />
+                                    )}
                                 </div>
                             </>
                         )}

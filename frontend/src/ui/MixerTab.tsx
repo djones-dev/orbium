@@ -126,6 +126,16 @@ export const MixerTab: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* Active Effects Row */}
+                        <div className="flex gap-1 h-3 mt-[-4px]">
+                            {body.audioParams.effects?.includes('phaser') && (
+                                <span className="text-[7px] text-[var(--color-accent-primary)] font-bold px-1 border border-[var(--color-accent-primary)]/30 rounded-sm">PH</span>
+                            )}
+                            {body.audioParams.effects?.includes('reverb') && (
+                                <span className="text-[7px] text-[var(--color-accent-secondary)] font-bold px-1 border border-[var(--color-accent-secondary)]/30 rounded-sm">RV</span>
+                            )}
+                        </div>
+
                         {/* Vertical Slider with Meter */}
                         <div className="flex-1 py-2">
                             <TerminalVerticalSlider
