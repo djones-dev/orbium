@@ -148,7 +148,7 @@ export class PhysicsSystem {
 
             // Apply ECS forces if present
             const physComp = em.getComponent<PhysicsComponent>(body.id, ComponentType.Physics);
-            if (physComp) {
+            if (physComp && physComp.forces.length > 0) {
                 // Sum forces
                 let fx = 0;
                 let fz = 0;
@@ -157,24 +157,21 @@ export class PhysicsSystem {
                     fz += f.y;
                 }
 
-                if (physComp.forces.length > 0) {
-                    // Convert Cartesian force to tangential acceleration
-                    // Ft = -Fx * sin(a) + Fz * cos(a)
-                    const tangentialForce = -fx * Math.sin(body.position.angle) + fz * Math.cos(body.position.angle);
-                    
-                    // a_tangential = F / m
-                    // alpha = a_tangential / r
-                    const radius = Math.max(0.1, body.position.radius); // Avoid division by zero
-                    const angularAcceleration = tangentialForce / (physComp.mass * radius);
-                    
-                    body.velocity.angular += angularAcceleration * dt;
-                    
-                    // Clear forces
-                    physComp.forces = [];
-                }
+                // Convert Cartesian force to tangential acceleration
+                // Ft = -Fx * sin(a) + Fz * cos(a)
+                const tangentialForce = -fx * Math.sin(body.position.angle) + fz * Math.cos(body.position.angle);
 
-                // Apply damping
+                // alpha = Ft / (m * r)
+                const radius = Math.max(0.1, body.position.radius);
+                const angularAcceleration = tangentialForce / (physComp.mass * radius);
+
+                body.velocity.angular += angularAcceleration * dt;
+
+                // Damping only when forces are active — prevents runaway gravity
+                // acceleration without bleeding velocity from bodies at rest
                 body.velocity.angular *= Math.pow(physComp.damping, dt * 60);
+
+                physComp.forces = [];
             }
 
             const prevAngle = body.position.angle;
