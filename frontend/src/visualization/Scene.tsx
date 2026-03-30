@@ -15,6 +15,8 @@ import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/components/Component';
 import { PositionComponent } from '../ecs/components/PositionComponent';
 import { PresetComponent } from '../ecs/components/PresetComponent';
+import { HierarchyComponent } from '../ecs/components/HierarchyComponent';
+import { PhysicsSystem } from '../simulation/PhysicsSystem';
 import { AudioEventType } from '../events/AudioEvents';
 import { EventBus } from '../events/EventBus';
 
@@ -344,6 +346,49 @@ const DragDropHandler = ({
 };
 
 /**
+ * Orbit ring for the currently selected body.
+ * - Planets/sun: centered at world origin, radius = body's world radius.
+ * - Moons: centered on the parent planet's current world position (updated
+ *   each frame via useFrame), radius = local orbit radius from PhysicsSystem.
+ */
+const SelectedBodyOrbitRing = ({ bodyId }: { bodyId: string }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
+    const world = World.getInstance();
+
+    // Check once at mount — body type doesn't change after creation
+    const hierarchy = world.entities.getComponent<HierarchyComponent>(bodyId, ComponentType.Hierarchy);
+    const parentId = hierarchy?.parentId ?? null;
+
+    // Local orbit radius: for moons, PhysicsSystem has the parent-relative radius;
+    // for planets, read directly from PositionComponent (world ≡ local for root bodies)
+    const orbitRadius = useMemo(() => {
+        if (parentId) {
+            return PhysicsSystem.getInstance().getPosition(bodyId)?.radius ?? 0;
+        }
+        return world.entities.getComponent<PositionComponent>(bodyId, ComponentType.Position)?.radius ?? 0;
+    }, [bodyId, parentId]);
+
+    useFrame(() => {
+        if (!meshRef.current || !parentId) return;
+        // Follow parent planet each frame so the ring tracks the moving planet
+        const parentPos = world.entities.getComponent<PositionComponent>(parentId, ComponentType.Position);
+        if (!parentPos) return;
+        const px = parentPos.radius * Math.cos(parentPos.angle);
+        const pz = parentPos.radius * Math.sin(parentPos.angle);
+        meshRef.current.position.set(px, 0, pz);
+    });
+
+    if (orbitRadius <= 0) return null;
+
+    return (
+        <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[orbitRadius - 0.05, orbitRadius + 0.05, 128]} />
+            <meshBasicMaterial color="#33ff33" opacity={0.25} transparent />
+        </mesh>
+    );
+};
+
+/**
  * 3D visualization scene for Orbium
  */
 const Scene = () => {
@@ -377,12 +422,6 @@ const Scene = () => {
         return () => { unsubAdd(); unsubRem(); };
     }, []);
 
-    const selectedBodyRadius = useMemo(() => {
-        if (!selectedBodyId) return null;
-        const world = World.getInstance();
-        const pos = world.entities.getComponent<PositionComponent>(selectedBodyId, ComponentType.Position);
-        return pos && pos.radius > 0 ? pos.radius : null;
-    }, [selectedBodyId]);
 
     return (
         <div className="w-full h-full">
@@ -415,13 +454,8 @@ const Scene = () => {
                     <Sun key={id} id={id} />
                 ))}
 
-                {/* Selected body orbit ring */}
-                {selectedBodyRadius && (
-                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                        <ringGeometry args={[selectedBodyRadius - 0.05, selectedBodyRadius + 0.05, 128]} />
-                        <meshBasicMaterial color="#33ff33" opacity={0.25} transparent />
-                    </mesh>
-                )}
+                {/* Selected body orbit ring — tracks parent position for moons */}
+                {selectedBodyId && <SelectedBodyOrbitRing bodyId={selectedBodyId} />}
 
                 <gridHelper
                     args={[20, 20, '#33ff33', '#33ff33']}
