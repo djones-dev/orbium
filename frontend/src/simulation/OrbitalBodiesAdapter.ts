@@ -8,17 +8,11 @@ import { createAudioComponent, AudioComponent } from '../ecs/components/AudioCom
 import { createVisualComponent, VisualComponent } from '../ecs/components/VisualComponent';
 import { createHierarchyComponent, HierarchyComponent } from '../ecs/components/HierarchyComponent';
 import { createPresetComponent, PresetComponent } from '../ecs/components/PresetComponent';
+import { createPhysicsComponent, PhysicsComponent } from '../ecs/components/PhysicsComponent';
 
 /**
  * OrbitalBodiesAdapter — the bridge between the legacy OrbitalBody API and
  * the ECS World during the migration period (Phases 4–6).
- *
- * OrbitalBodiesManager continues to own the authoritative OrbitalBody[] list.
- * The adapter keeps the ECS World in sync so ECS systems (MovementSystem,
- * AudioSystem, RenderSystem) always have current data.
- *
- * Removed in Phase 7 once all consumers have migrated to query the World
- * directly.
  */
 export class OrbitalBodiesAdapter {
     private world: World;
@@ -51,6 +45,7 @@ export class OrbitalBodiesAdapter {
         );
         em.addComponent(body.id, createHierarchyComponent(body.parentId ?? null));
         em.addComponent(body.id, createPresetComponent(body.type, body.presetId));
+        em.addComponent(body.id, createPhysicsComponent(1, 0.999));
     }
 
     /** Remove the entity and all its components from the ECS World. */
