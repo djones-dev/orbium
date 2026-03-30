@@ -123,4 +123,4 @@ export const Sun = React.memo(({ id }: { id: string }) => {
             />
         </mesh>
     );
-};
+});

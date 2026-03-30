@@ -145,7 +145,6 @@ export class PhysicsSystem {
         // 2. Apply Forces and Integrate
         for (const body of this.bodies.values()) {
             if (!body.active) continue;
-    ...
 
             // Apply ECS forces if present
             const physComp = em.getComponent<PhysicsComponent>(body.id, ComponentType.Physics);
