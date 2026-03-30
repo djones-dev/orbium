@@ -347,45 +347,64 @@ const DragDropHandler = ({
 
 /**
  * Orbit ring for the currently selected body.
- * - Planets/sun: centered at world origin, radius = body's world radius.
- * - Moons: centered on the parent planet's current world position (updated
- *   each frame via useFrame), radius = local orbit radius from PhysicsSystem.
+ * All data is read fresh every frame via useFrame — no stale useMemo.
+ *
+ * Implementation: a unit circle (radius=1) THREE.Line scaled to the actual
+ * orbit radius each frame. This avoids ringGeometry's fixed-args limitation
+ * and guarantees the ring is always correct regardless of mount timing.
+ *
+ * - Planets/sun: centered at world origin, scaled to orbital radius.
+ * - Moons: centered on parent's current world position, scaled to local radius.
  */
 const SelectedBodyOrbitRing = ({ bodyId }: { bodyId: string }) => {
-    const meshRef = useRef<THREE.Mesh>(null);
-    const world = World.getInstance();
-
-    // Check once at mount — body type doesn't change after creation
-    const hierarchy = world.entities.getComponent<HierarchyComponent>(bodyId, ComponentType.Hierarchy);
-    const parentId = hierarchy?.parentId ?? null;
-
-    // Local orbit radius: for moons, PhysicsSystem has the parent-relative radius;
-    // for planets, read directly from PositionComponent (world ≡ local for root bodies)
-    const orbitRadius = useMemo(() => {
-        if (parentId) {
-            return PhysicsSystem.getInstance().getPosition(bodyId)?.radius ?? 0;
+    // Build a unit circle (radius=1) once; scale it to the orbit radius each frame
+    const lineObj = useMemo(() => {
+        const pts: THREE.Vector3[] = [];
+        const segments = 128;
+        for (let i = 0; i <= segments; i++) {
+            const a = (i / segments) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
         }
-        return world.entities.getComponent<PositionComponent>(bodyId, ComponentType.Position)?.radius ?? 0;
-    }, [bodyId, parentId]);
+        const geo = new THREE.BufferGeometry().setFromPoints(pts);
+        const mat = new THREE.LineBasicMaterial({ color: '#33ff33', opacity: 0.25, transparent: true });
+        const line = new THREE.Line(geo, mat);
+        line.visible = false;
+        return line;
+    }, []);
 
     useFrame(() => {
-        if (!meshRef.current || !parentId) return;
-        // Follow parent planet each frame so the ring tracks the moving planet
-        const parentPos = world.entities.getComponent<PositionComponent>(parentId, ComponentType.Position);
-        if (!parentPos) return;
-        const px = parentPos.radius * Math.cos(parentPos.angle);
-        const pz = parentPos.radius * Math.sin(parentPos.angle);
-        meshRef.current.position.set(px, 0, pz);
+        const world = World.getInstance();
+
+        const hierarchy = world.entities.getComponent<HierarchyComponent>(bodyId, ComponentType.Hierarchy);
+        const parentId = hierarchy?.parentId ?? null;
+
+        let cx = 0, cz = 0, orbitRadius = 0;
+
+        if (parentId) {
+            // Moon: center on parent's live world position; local radius from PhysicsSystem
+            const parentPos = world.entities.getComponent<PositionComponent>(parentId, ComponentType.Position);
+            if (parentPos) {
+                cx = parentPos.radius * Math.cos(parentPos.angle);
+                cz = parentPos.radius * Math.sin(parentPos.angle);
+            }
+            orbitRadius = PhysicsSystem.getInstance().getPosition(bodyId)?.radius ?? 0;
+        } else {
+            // Planet/sun: centered at origin; world radius equals local radius
+            const pos = world.entities.getComponent<PositionComponent>(bodyId, ComponentType.Position);
+            orbitRadius = pos?.radius ?? 0;
+        }
+
+        if (orbitRadius <= 0) {
+            lineObj.visible = false;
+            return;
+        }
+
+        lineObj.visible = true;
+        lineObj.position.set(cx, 0, cz);
+        lineObj.scale.setScalar(orbitRadius);
     });
 
-    if (orbitRadius <= 0) return null;
-
-    return (
-        <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[orbitRadius - 0.05, orbitRadius + 0.05, 128]} />
-            <meshBasicMaterial color="#33ff33" opacity={0.25} transparent />
-        </mesh>
-    );
+    return <primitive object={lineObj} />;
 };
 
 /**
