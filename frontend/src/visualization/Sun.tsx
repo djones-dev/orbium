@@ -9,12 +9,12 @@ import moonVertexShader from './shaders/moon.vert?raw';
 import moonFragmentShader from './shaders/moon.frag?raw';
 import { SunParameters } from '../types/audio';
 import { useSelection } from '../contexts/SelectionContext';
-import { PhysicsSystem } from '../simulation/PhysicsSystem';
 import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/components/Component';
 import { AudioComponent } from '../ecs/components/AudioComponent';
 import { VisualComponent } from '../ecs/components/VisualComponent';
 import { PresetComponent } from '../ecs/components/PresetComponent';
+import { PositionComponent } from '../ecs/components/PositionComponent';
 
 type BodyVariant = 'sun' | 'planet' | 'moon';
 
@@ -122,12 +122,16 @@ export const Sun = React.memo(({ id }: { id: string }) => {
             );
         }
 
-        // Move the group to the orbital position
+        // Move the group to the orbital position.
+        // Read world-space coordinates from ECS PositionComponent:
+        //   - Planets: synced by MovementSystem from PhysicsSystem each frame
+        //   - Moons:   synced by HierarchySystem (priority 150, after MovementSystem)
+        //             which computes parent world pos + child local pos → world pos
         if (isOrbiting) {
-            const position = PhysicsSystem.getInstance().getPosition(id);
-            if (position) {
-                const x = position.radius * Math.cos(position.angle);
-                const z = position.radius * Math.sin(position.angle);
+            const pos = world.entities.getComponent<PositionComponent>(id, ComponentType.Position);
+            if (pos) {
+                const x = pos.radius * Math.cos(pos.angle);
+                const z = pos.radius * Math.sin(pos.angle);
                 groupRef.current.position.set(x, 0, z);
             }
         }

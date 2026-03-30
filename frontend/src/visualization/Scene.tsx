@@ -5,8 +5,8 @@ import { logger } from '@/utils/logger';
 import { useAudioEngine } from '../hooks/useAudioEngine';
 import { useSelection } from '../contexts/SelectionContext';
 import * as THREE from 'three';
-import { useRef, useMemo, useEffect, useState } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useRef, useMemo, useEffect, useState, useCallback } from 'react';
+import { useThree, useFrame } from '@react-three/fiber';
 import { presetService } from '../services/PresetService';
 import { useUIStore } from '../stores/uiStore';
 import { OrbitalBody } from '../types/orbital';
@@ -24,16 +24,41 @@ const PhysicsUpdater = () => {
     return null;
 };
 
+// Orbit radius a newly created moon will have around its parent
+const MOON_LOCAL_ORBIT_RADIUS = 1.8;
+
 /**
- * Renders faint orbital rings for all planet-level bodies.
- * Brightens when dragging a modulator/effect to show valid drop targets.
+ * Returns current world-space Cartesian coords for an entity's PositionComponent.
+ * Returns null if entity doesn't exist or has no position.
  */
-const AllOrbitalRings = ({ isDraggingModulator, highlightedParentId }: {
+function getWorldXZ(entityId: string): { x: number; z: number } | null {
+    const pos = World.getInstance().entities.getComponent<PositionComponent>(entityId, ComponentType.Position);
+    if (!pos) return null;
+    return {
+        x: pos.radius * Math.cos(pos.angle),
+        z: pos.radius * Math.sin(pos.angle),
+    };
+}
+
+/**
+ * Faint orbital rings for all planets.
+ * Brightens during a modulator/effect drag to show valid targets.
+ * When a parent is highlighted, shows a preview orbit ring around that planet
+ * (at the local orbit radius the new moon will use) and a connection line.
+ */
+const AllOrbitalRings = ({
+    isDraggingModulator,
+    highlightedParentId,
+    cursorPos,
+}: {
     isDraggingModulator: boolean;
     highlightedParentId: string | null;
+    cursorPos: THREE.Vector3 | null;
 }) => {
-    const groupRef = useRef<THREE.Group>(null);
     const [rings, setRings] = useState<Array<{ id: string; radius: number }>>([]);
+
+    // Orbit-preview ring — centered at the highlighted parent planet
+    const previewRingRef = useRef<THREE.Mesh>(null);
 
     useEffect(() => {
         const world = World.getInstance();
@@ -59,12 +84,54 @@ const AllOrbitalRings = ({ isDraggingModulator, highlightedParentId }: {
         return () => { unsubAdd(); unsubRem(); };
     }, []);
 
+    // Build a THREE.Line object once, add it imperatively
+    const lineObj = useMemo(() => {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+        const mat = new THREE.LineBasicMaterial({ color: '#9b59b6', opacity: 0.45, transparent: true });
+        const l = new THREE.Line(geo, mat);
+        l.visible = false;
+        return l;
+    }, []);
+
+    // Every frame: reposition the orbit-preview ring and connection line
+    useFrame(() => {
+        if (!highlightedParentId || !isDraggingModulator) {
+            if (previewRingRef.current) previewRingRef.current.visible = false;
+            lineObj.visible = false;
+            return;
+        }
+
+        const parentXZ = getWorldXZ(highlightedParentId);
+        if (!parentXZ) return;
+
+        // Orbit-preview ring follows the highlighted planet
+        if (previewRingRef.current) {
+            previewRingRef.current.visible = true;
+            previewRingRef.current.position.set(parentXZ.x, 0, parentXZ.z);
+        }
+
+        // Connection line: planet center → cursor
+        if (cursorPos) {
+            lineObj.visible = true;
+            const positions = new Float32Array([
+                parentXZ.x, 0, parentXZ.z,
+                cursorPos.x, 0, cursorPos.z,
+            ]);
+            (lineObj.geometry as THREE.BufferGeometry).setAttribute(
+                'position', new THREE.BufferAttribute(positions, 3)
+            );
+            (lineObj.geometry as THREE.BufferGeometry).attributes.position.needsUpdate = true;
+        }
+    });
+
     return (
-        <group ref={groupRef}>
+        <group>
+            {/* Faint planet orbit rings (world-origin-centered) */}
             {rings.map(({ id, radius }) => {
                 const isHighlighted = id === highlightedParentId;
-                const opacity = isHighlighted ? 0.55
-                    : isDraggingModulator ? 0.28
+                const opacity = isHighlighted ? 0.6
+                    : isDraggingModulator ? 0.25
                     : 0.06;
                 const color = isHighlighted ? '#33ff33'
                     : isDraggingModulator ? '#9b59b6'
@@ -76,18 +143,40 @@ const AllOrbitalRings = ({ isDraggingModulator, highlightedParentId }: {
                     </mesh>
                 );
             })}
+
+            {/* Orbit-preview ring around the target planet */}
+            <mesh
+                ref={previewRingRef}
+                rotation={[-Math.PI / 2, 0, 0]}
+                visible={false}
+            >
+                <ringGeometry args={[
+                    MOON_LOCAL_ORBIT_RADIUS - 0.06,
+                    MOON_LOCAL_ORBIT_RADIUS + 0.06,
+                    64,
+                ]} />
+                <meshBasicMaterial color="#9b59b6" opacity={0.7} transparent />
+            </mesh>
+
+            {/* Connection line: imperative THREE.Line to avoid JSX/SVG conflict */}
+            <primitive object={lineObj} />
         </group>
     );
 };
 
 /**
- * Internal component for handling drag and drop interaction within the 3D scene.
- * For generator presets: place anywhere on the orbital plane.
- * For modulator/effect presets: find nearest planet body (within 8 units).
+ * Internal drag-and-drop handler.
+ * Generators: place anywhere on orbital plane.
+ * Modulators/Effects: snap to nearest planet within 8 units.
  */
-const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
+const DragDropHandler = ({
+    onDragStateChange,
+    onHighlightChange,
+    onCursorMove,
+}: {
     onDragStateChange: (isDragging: boolean) => void;
     onHighlightChange: (id: string | null) => void;
+    onCursorMove: (pos: THREE.Vector3 | null) => void;
 }) => {
     const { camera, gl } = useThree();
     const { engine } = useAudioEngine();
@@ -110,13 +199,11 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
             return raycaster.ray.intersectPlane(plane, target);
         };
 
-        const isDraggingModulatorOrEffect = (e: DragEvent) => {
-            return e.dataTransfer!.types.some(
+        const isModOrEffect = (e: DragEvent) =>
+            e.dataTransfer!.types.some(
                 t => t === 'presettype/modulator' || t === 'presettype/effect'
             );
-        };
 
-        /** Find nearest planet within maxDist to the drop point */
         const findNearestParent = (maxDist: number): string | undefined => {
             const world = World.getInstance();
             const ids = world.entities.query(ComponentType.Position, ComponentType.Preset);
@@ -126,7 +213,6 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
             for (const id of ids) {
                 if (id === 'sun-primary') continue;
                 const preset = world.entities.getComponent<PresetComponent>(id, ComponentType.Preset);
-                // Only planets can be parents for modulators/effects
                 if (preset?.bodyType !== 'planet') continue;
 
                 const pos = world.entities.getComponent<PositionComponent>(id, ComponentType.Position);
@@ -150,17 +236,23 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
             const hit = getRaycastIntersection(e.clientX, e.clientY);
             if (!hit) return;
 
-            if (previewRef.current) {
-                previewRef.current.visible = true;
-                previewRef.current.position.copy(target);
-            }
+            const draggingModOrEffect = isModOrEffect(e);
+            onDragStateChange(draggingModOrEffect);
 
-            const isModOrEffect = isDraggingModulatorOrEffect(e);
-            onDragStateChange(isModOrEffect);
-
-            if (isModOrEffect) {
+            if (draggingModOrEffect) {
+                // For modulators/effects: don't show cursor preview, show orbit ring around parent instead
+                if (previewRef.current) previewRef.current.visible = false;
                 const nearestId = findNearestParent(8.0);
                 onHighlightChange(nearestId ?? null);
+                onCursorMove(target.clone());
+            } else {
+                // Generator: show cursor preview at drop position
+                if (previewRef.current) {
+                    previewRef.current.visible = true;
+                    previewRef.current.position.copy(target);
+                }
+                onHighlightChange(null);
+                onCursorMove(null);
             }
         };
 
@@ -168,6 +260,7 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
             if (previewRef.current) previewRef.current.visible = false;
             onDragStateChange(false);
             onHighlightChange(null);
+            onCursorMove(null);
         };
 
         const handleDrop = async (e: DragEvent) => {
@@ -175,6 +268,7 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
             if (previewRef.current) previewRef.current.visible = false;
             onDragStateChange(false);
             onHighlightChange(null);
+            onCursorMove(null);
 
             const presetId = e.dataTransfer!.getData('presetId');
             if (!presetId) return;
@@ -194,7 +288,6 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
                     showToast('PLANET CREATED', 'success');
 
                 } else if (preset.type === 'modulator' || preset.type === 'effect') {
-                    // Find nearest planet within generous range (8 units)
                     const parentId = findNearestParent(8.0);
                     if (!parentId) {
                         showToast('Drop near a planet to attach', 'error');
@@ -208,7 +301,7 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
                         type: 'moon',
                         presetType: preset.type,
                         presetId: preset.id,
-                        position: { radius: 1.8, angle: 0 },
+                        position: { radius: MOON_LOCAL_ORBIT_RADIUS, angle: 0 },
                         velocity: 0.8,
                         audioParams: preset.parameters,
                         audioLayerId: `layer-${id}`,
@@ -239,12 +332,13 @@ const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
             canvas.removeEventListener('drop', handleDrop);
         };
     }, [camera, gl, plane, engine, showToast, pointer, target, raycaster,
-        onDragStateChange, onHighlightChange]);
+        onDragStateChange, onHighlightChange, onCursorMove]);
 
+    // Generator drop preview (cursor-following ring)
     return (
         <mesh ref={previewRef} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
             <ringGeometry args={[0, 1.0, 32]} />
-            <meshBasicMaterial color="white" opacity={0.4} transparent side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#4169E1" opacity={0.4} transparent side={THREE.DoubleSide} />
         </mesh>
     );
 };
@@ -262,6 +356,11 @@ const Scene = () => {
     const [renderData, setRenderData] = useState<string[]>([]);
     const [isDraggingModulator, setIsDraggingModulator] = useState(false);
     const [highlightedParentId, setHighlightedParentId] = useState<string | null>(null);
+    const [cursorPos, setCursorPos] = useState<THREE.Vector3 | null>(null);
+
+    const handleDragStateChange = useCallback((v: boolean) => setIsDraggingModulator(v), []);
+    const handleHighlightChange = useCallback((id: string | null) => setHighlightedParentId(id), []);
+    const handleCursorMove = useCallback((pos: THREE.Vector3 | null) => setCursorPos(pos), []);
 
     useEffect(() => {
         const world = World.getInstance();
@@ -278,7 +377,6 @@ const Scene = () => {
         return () => { unsubAdd(); unsubRem(); };
     }, []);
 
-    // Selected body orbit ring
     const selectedBodyRadius = useMemo(() => {
         if (!selectedBodyId) return null;
         const world = World.getInstance();
@@ -307,30 +405,24 @@ const Scene = () => {
                     speed={0.5}
                 />
 
-                {/* Subtle background rings for all planet orbits */}
                 <AllOrbitalRings
                     isDraggingModulator={isDraggingModulator}
                     highlightedParentId={highlightedParentId}
+                    cursorPos={cursorPos}
                 />
 
-                {/* Render all bodies */}
                 {renderData.map(id => (
                     <Sun key={id} id={id} />
                 ))}
 
-                {/* Selected body orbit ring (bright green) */}
+                {/* Selected body orbit ring */}
                 {selectedBodyRadius && (
                     <mesh rotation={[-Math.PI / 2, 0, 0]}>
                         <ringGeometry args={[selectedBodyRadius - 0.05, selectedBodyRadius + 0.05, 128]} />
-                        <meshBasicMaterial
-                            color="#33ff33"
-                            opacity={0.25}
-                            transparent
-                        />
+                        <meshBasicMaterial color="#33ff33" opacity={0.25} transparent />
                     </mesh>
                 )}
 
-                {/* Reference grid */}
                 <gridHelper
                     args={[20, 20, '#33ff33', '#33ff33']}
                     position={[0, -0.01, 0]}
@@ -348,8 +440,9 @@ const Scene = () => {
                 />
 
                 <DragDropHandler
-                    onDragStateChange={setIsDraggingModulator}
-                    onHighlightChange={setHighlightedParentId}
+                    onDragStateChange={handleDragStateChange}
+                    onHighlightChange={handleHighlightChange}
+                    onCursorMove={handleCursorMove}
                 />
                 <PhysicsUpdater />
             </Canvas>
