@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
 import { Sun } from './Sun';
+import { logger } from '@/utils/logger';
 import { useAudioEngine } from '../hooks/useAudioEngine';
 import { useSelection } from '../contexts/SelectionContext';
 import * as THREE from 'three';
@@ -140,7 +141,7 @@ const DragDropHandler = () => {
                         showToast('PLANET CREATED', 'success');
                     }
                 } catch (err) {
-                    console.error(err);
+                    logger.error(err);
                     showToast('Failed to instantiate preset', 'error');
                 }
             }

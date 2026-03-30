@@ -10,7 +10,7 @@ import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/components/Component';
 import { AudioComponent } from '../ecs/components/AudioComponent';
 
-export const Sun: React.FC<{ id: string }> = ({ id }) => {
+export const Sun = React.memo(({ id }: { id: string }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const { selectedBodyId, select } = useSelection();

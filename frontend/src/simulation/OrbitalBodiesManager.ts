@@ -19,6 +19,7 @@ import { createHierarchyComponent, HierarchyComponent } from '../ecs/components/
 import { createPresetComponent, PresetComponent } from '../ecs/components/PresetComponent';
 import { createPhysicsComponent } from '../ecs/components/PhysicsComponent';
 import { createColliderComponent } from '../ecs/components/ColliderComponent';
+import { logger } from '../utils/logger';
 
 export class OrbitalBodiesManager {
     private listeners = new Set<() => void>();
@@ -47,7 +48,7 @@ export class OrbitalBodiesManager {
                 count: savedBodies.length,
             });
         } catch (error) {
-            console.error('Failed to load bodies from backend:', error);
+            logger.error('Failed to load bodies from backend:', error);
         }
     }
 
@@ -60,7 +61,7 @@ export class OrbitalBodiesManager {
             try {
                 await bodyService.createBody(body);
             } catch (error) {
-                console.error('Failed to sync body creation:', error);
+                logger.error('Failed to sync body creation:', error);
                 this.removeBody(body.id, false);
                 throw error;
             }
@@ -76,7 +77,7 @@ export class OrbitalBodiesManager {
             try {
                 await bodyService.deleteBody(id);
             } catch (error) {
-                console.error('Failed to sync body deletion:', error);
+                logger.error('Failed to sync body deletion:', error);
             }
         }
     }
@@ -97,7 +98,7 @@ export class OrbitalBodiesManager {
             try {
                 await bodyService.updateBody(id, params);
             } catch (error) {
-                console.error('Failed to sync body update:', error);
+                logger.error('Failed to sync body update:', error);
             }
         }
     }
@@ -106,7 +107,7 @@ export class OrbitalBodiesManager {
         try {
             await bodyService.addAttribute(bodyId, { preset_id: attributePresetId });
         } catch (error) {
-            console.error('Failed to add attribute:', error);
+            logger.error('Failed to add attribute:', error);
         }
     }
 

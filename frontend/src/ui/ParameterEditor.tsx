@@ -8,6 +8,7 @@ import { TerminalSelect } from './terminal/TerminalSelect';
 import { TerminalToggle } from './terminal/TerminalToggle';
 import { SunParameters } from '../types/audio';
 import { freqToNote, midiToFreq, freqToMidi } from '../audio/audioUtils';
+import { logger } from '../utils/logger';
 
 const MODULATABLE_PARAMS = [
     { label: 'FREQUENCY', value: 'rootFrequency' },
@@ -59,7 +60,7 @@ export const ParameterEditor: React.FC = () => {
             setSaveStatus('SAVED');
             setTimeout(() => setSaveStatus(prev => prev === 'SAVED' ? 'IDLE' : prev), 2000);
         } catch (error) {
-            console.error("Save failed", error);
+            logger.error("Save failed", error);
             setSaveStatus('ERROR');
             showToast("Failed to save parameter changes", 'error');
         }

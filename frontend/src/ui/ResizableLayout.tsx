@@ -1,10 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import './ResizableLayout.css';
 import { SelectedBodyInfo } from './SelectedBodyInfo';
-
-import { PresetBrowser } from './PresetBrowser';
-import { ParameterEditor } from './ParameterEditor';
 import { useUIStore } from '../stores/uiStore';
+
+const PresetBrowser = lazy(() => import('./PresetBrowser').then(module => ({ default: module.PresetBrowser })));
+const ParameterEditor = lazy(() => import('./ParameterEditor').then(module => ({ default: module.ParameterEditor })));
+
+const LoadingPane = ({ label }: { label: string }) => (
+    <div className="h-full flex items-center justify-center text-[var(--color-text-secondary)] font-mono text-xs opacity-50">
+        LOADING {label}...
+    </div>
+);
 
 interface ResizableLayoutProps {
     children: React.ReactNode;
@@ -98,7 +104,9 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                         </div>
                     </div>
                     <div className="pane-content">
-                        <PresetBrowser />
+                        <Suspense fallback={<LoadingPane label="PRESETS" />}>
+                            <PresetBrowser />
+                        </Suspense>
                     </div>
                 </div>
 
@@ -162,7 +170,9 @@ const ResizableLayout: React.FC<ResizableLayoutProps> = ({ children }) => {
                             </button>
                         </div>
                         <div className="pane-content p-0 overflow-hidden">
-                            <ParameterEditor />
+                            <Suspense fallback={<LoadingPane label="PARAMETERS" />}>
+                                <ParameterEditor />
+                            </Suspense>
                         </div>
                     </div>
                 )}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Preset, PresetCategory, PresetType } from '../types/preset';
 import { useUIStore } from '../stores/uiStore';
+import { logger } from '../utils/logger';
 
 interface PresetItemProps {
     preset: Preset;
@@ -39,7 +40,7 @@ export const PresetItem: React.FC<PresetItemProps> = ({
         if (action === 'rename') {
             if (!preset.is_default) {
                 // setIsRenaming(true);
-                console.log('Renaming not implemented yet');
+                logger.log('Renaming not implemented yet');
             }
         } else if (action === 'duplicate') {
             onDuplicate?.(preset);

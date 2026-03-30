@@ -14,6 +14,7 @@ import { MasterChain } from './MasterChain';
 import { WorkletManager } from './WorkletManager';
 import { LayerFactory } from './layers/LayerFactory';
 import { SunLayer } from './layers/SunLayer';
+import { logger } from '../utils/logger';
 // @ts-ignore
 import noiseProcessorUrl from './worklets/noise-processor.js?url';
 
@@ -72,41 +73,51 @@ export class AudioEngine {
             return;
         }
 
-        const AudioContextClass =
-            window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-        this.context = new AudioContextClass();
-
-        if (this.context.state === 'suspended') {
-            await this.context.resume();
-        }
-
         try {
-            await this.workletManager.load(this.context, noiseProcessorUrl, 'noise-processor');
-        } catch (e) {
-            // Noise will fall back to silent node inside SunLayer
+            const AudioContextClass =
+                window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            this.context = new AudioContextClass();
+
+            if (this.context.state === 'suspended') {
+                await this.context.resume();
+            }
+
+            try {
+                await this.workletManager.load(this.context, noiseProcessorUrl, 'noise-processor');
+            } catch (e) {
+                // Noise will fall back to silent node inside SunLayer
+            }
+
+            this.masterChain = new MasterChain(this.context);
+
+            this.sunLayer = new SunLayer(this.context, 'sun-primary');
+            this.sunLayer.connect(this.masterChain.gain);
+
+            await this.bodiesManager.addBody(
+                {
+                    id: 'sun-primary',
+                    type: 'sun',
+                    position: { radius: 0, angle: 0 },
+                    velocity: 0,
+                    audioParams: this.sunLayer.getParams(),
+                    audioLayerId: 'sun-main-layer',
+                    visualConfig: { color: '#ffcc00', size: 1.4, shaderUniforms: {} },
+                },
+                false,
+            );
+
+            await this.bodiesManager.loadFromBackend();
+
+            logger.log('Audio Engine Initialized');
+            
+            this.bus.emit(AudioEventType.ENGINE_INITIALIZED, {
+                contextSampleRate: this.context.sampleRate
+            });
+        } catch (error) {
+            logger.error('AudioEngine initialization failed:', error);
+            this.bus.emit(AudioEventType.ENGINE_SUSPENDED, {});
+            throw error;
         }
-
-        this.masterChain = new MasterChain(this.context);
-
-        this.sunLayer = new SunLayer(this.context, 'sun-primary');
-        this.sunLayer.connect(this.masterChain.gain);
-
-        await this.bodiesManager.addBody(
-            {
-                id: 'sun-primary',
-                type: 'sun',
-                position: { radius: 0, angle: 0 },
-                velocity: 0,
-                audioParams: this.sunLayer.getParams(),
-                audioLayerId: 'sun-main-layer',
-                visualConfig: { color: '#ffcc00', size: 1.4, shaderUniforms: {} },
-            },
-            false,
-        );
-
-        await this.bodiesManager.loadFromBackend();
-
-        console.log('Audio Engine Initialized');
     }
 
     private handleBodyAdded(body: OrbitalBody): void {

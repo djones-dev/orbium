@@ -15,6 +15,8 @@ interface UIState {
     setEditingPresetId: (id: string | null) => void;
     toast: { message: string, type: 'success' | 'error' } | null;
     showToast: (message: string, type: 'success' | 'error') => void;
+    debug: boolean;
+    setDebug: (debug: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -34,4 +36,6 @@ export const useUIStore = create<UIState>((set) => ({
         set({ toast: { message, type } });
         setTimeout(() => set({ toast: null }), 3000);
     },
+    debug: false,
+    setDebug: (debug) => set({ debug }),
 }));
