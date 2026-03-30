@@ -31,6 +31,11 @@ def delete_body(body_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Body not found")
     return {"status": "deleted"}
 
+@router.delete("")
+def delete_all_bodies(db: Session = Depends(get_db)):
+    count = body_service.delete_all_bodies(db)
+    return {"status": "cleared", "count": count}
+
 @router.post("/{body_id}/attributes", response_model=BodyInstanceResponse)
 def add_attribute(body_id: UUID, attribute: Dict[str, Any] = Body(...), db: Session = Depends(get_db)):
     updated = body_service.add_attribute(db, body_id, attribute)

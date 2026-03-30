@@ -120,6 +120,14 @@ export class BodyService {
         }
     }
 
+    async clearAllBodies(): Promise<void> {
+        try {
+            await fetch(this.baseUrl, { method: 'DELETE' });
+        } catch (error) {
+            this.handleError(error);
+        }
+    }
+
     async addAttribute(bodyId: string, attribute: Record<string, any>): Promise<void> {
         try {
             const response = await fetch(`${this.baseUrl}/${bodyId}/attributes`, {

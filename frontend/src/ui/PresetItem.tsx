@@ -78,6 +78,8 @@ export const PresetItem: React.FC<PresetItemProps> = ({
                 onDragStart={(e) => {
                     e.dataTransfer.setData('presetId', preset.id);
                     e.dataTransfer.setData('presetType', preset.type);
+                    // Encode type in key name so it's readable during dragover (values are restricted)
+                    e.dataTransfer.setData(`presettype/${preset.type}`, '');
                     e.dataTransfer.effectAllowed = 'copy';
                 }}
                 className={`preset-item ${isActive ? 'active' : ''}`}

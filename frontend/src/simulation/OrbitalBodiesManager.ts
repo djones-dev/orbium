@@ -34,13 +34,19 @@ export class OrbitalBodiesManager {
         this.listeners.forEach(l => l());
     }
 
-    async loadFromBackend(): Promise<void> {
+    async loadFromBackend(
+        enrichBody?: (body: OrbitalBody) => void
+    ): Promise<void> {
         try {
             const savedBodies = await bodyService.getBodies();
-            
-            // Sync restored bodies into the ECS World
+
             for (const body of savedBodies) {
+                // Allow caller to enrich body (e.g. derive presetType/color from preset cache)
+                enrichBody?.(body);
                 this.addEntityToECS(body);
+                // Emit BODY_ADDED so PhysicsSystem registers the body (rotation)
+                // and AudioEngine creates an audio layer (sound)
+                this.bus.emit<BodyAddedEvent>(AudioEventType.BODY_ADDED, { body });
             }
 
             this.notify();
@@ -49,6 +55,25 @@ export class OrbitalBodiesManager {
             });
         } catch (error) {
             logger.error('Failed to load bodies from backend:', error);
+        }
+    }
+
+    async resetScene(): Promise<void> {
+        const world = World.getInstance();
+        const ids = world.entities.query(ComponentType.Position);
+
+        for (const id of ids) {
+            if (id === 'sun-primary') continue;
+            this.removeEntityFromECS(id);
+            this.bus.emit<BodyRemovedEvent>(AudioEventType.BODY_REMOVED, { id });
+        }
+
+        this.notify();
+
+        try {
+            await bodyService.clearAllBodies();
+        } catch (error) {
+            logger.error('Failed to clear bodies from backend:', error);
         }
     }
 
@@ -142,7 +167,7 @@ export class OrbitalBodiesManager {
             ),
         );
         em.addComponent(body.id, createHierarchyComponent(body.parentId ?? null));
-        em.addComponent(body.id, createPresetComponent(body.type, body.presetId));
+        em.addComponent(body.id, createPresetComponent(body.type, body.presetId, body.presetType));
         em.addComponent(body.id, createPhysicsComponent(1, 0.999));
         em.addComponent(body.id, createColliderComponent(body.visualConfig.size));
     }

@@ -14,7 +14,7 @@ import { PhysicsSystem } from '../../simulation/PhysicsSystem';
  * Priority 50 — runs before MovementSystem (100).
  */
 export class HierarchySystem extends System {
-    readonly priority = 50;
+    readonly priority = 150; // must run after MovementSystem (100) so parent positions are current
     readonly requiredComponents = [ComponentType.Hierarchy, ComponentType.Position];
 
     update(entityManager: EntityManager, _dt: number): void {
