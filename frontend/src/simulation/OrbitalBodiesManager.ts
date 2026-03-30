@@ -9,11 +9,14 @@ import {
     ParamsChangedEvent,
 } from '../events/AudioEvents';
 import { SimulationEventType, BodiesLoadedEvent } from '../events/SimulationEvents';
+import { World } from '../ecs/World';
+import { OrbitalBodiesAdapter } from './OrbitalBodiesAdapter';
 
 export class OrbitalBodiesManager {
     private bodies: OrbitalBody[] = [];
     private listeners = new Set<() => void>();
     private bus = EventBus.getInstance();
+    private adapter = new OrbitalBodiesAdapter(World.getInstance());
 
     subscribe(listener: () => void): () => void {
         this.listeners.add(listener);
@@ -29,6 +32,13 @@ export class OrbitalBodiesManager {
             const savedBodies = await bodyService.getBodies();
             const localBodies = this.bodies.filter(b => b.id === 'sun-primary');
             this.bodies = [...localBodies, ...savedBodies];
+
+            // Sync restored bodies into the ECS World (no BODY_ADDED events —
+            // this is a restore, not a user-initiated add).
+            for (const body of this.bodies) {
+                this.adapter.addEntity(body);
+            }
+
             this.notify();
             this.bus.emit<BodiesLoadedEvent>(SimulationEventType.BODIES_LOADED, {
                 count: this.bodies.length,
@@ -40,6 +50,7 @@ export class OrbitalBodiesManager {
 
     async addBody(body: OrbitalBody, sync: boolean = true): Promise<void> {
         this.bodies.push(body);
+        this.adapter.addEntity(body);
         this.bus.emit<BodyAddedEvent>(AudioEventType.BODY_ADDED, { body });
         this.notify();
 
@@ -60,6 +71,7 @@ export class OrbitalBodiesManager {
 
     async removeBody(id: string, sync: boolean = true): Promise<void> {
         this.bodies = this.bodies.filter(b => b.id !== id);
+        this.adapter.removeEntity(id);
         this.bus.emit<BodyRemovedEvent>(AudioEventType.BODY_REMOVED, { id });
         this.notify();
 
@@ -81,6 +93,7 @@ export class OrbitalBodiesManager {
         if (!body) return;
 
         body.audioParams = { ...body.audioParams, ...params };
+        this.adapter.updateAudioParams(id, params);
         this.bus.emit<ParamsChangedEvent>(AudioEventType.PARAMS_CHANGED, { id, params });
 
         if (sync) {
