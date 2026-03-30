@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react';
 import { AudioEngine } from '../audio/AudioEngine';
 import { useUIStore } from '../stores/uiStore';
+import { logger } from '@/utils/logger';
 
 export const useAudioEngine = () => {
     const engineRef = useRef<AudioEngine>(AudioEngine.getInstance());
@@ -23,7 +24,7 @@ export const useAudioEngine = () => {
             }
             setPlaying(true);
         } catch (e) {
-            console.error('Failed to initialize audio', e);
+            logger.error('Failed to initialize audio', e);
         }
     }, [isAudioActive, setAudioActive, setPlaying]);
 

@@ -1,5 +1,6 @@
 import { Preset, PresetCategory, PresetFilters } from '../types/preset';
 import { presetService } from '../services/PresetService';
+import { logger } from '@/utils/logger';
 
 export class PresetManager {
     private presets: Preset[] = [];

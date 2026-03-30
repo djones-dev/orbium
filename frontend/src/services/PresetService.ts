@@ -1,4 +1,5 @@
 import { Preset, PresetFilters } from '../types/preset';
+import { logger } from '@/utils/logger';
 
 class PresetError extends Error {
     constructor(message: string, public originalError?: any) {
@@ -25,7 +26,7 @@ export class PresetService {
     }
 
     private handleError(error: any): never {
-        console.error('[PresetService Error]:', error);
+        logger.error('[PresetService Error]:', error);
         if (error instanceof PresetError) {
             throw error;
         }

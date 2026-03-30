@@ -63,4 +63,7 @@ postgres_data/
 
 # AI Assistant Files
 CLAUDE.md
+GEMINI.md
 REFERENCE/
+
+docs/AGENT_HANDOFF.md

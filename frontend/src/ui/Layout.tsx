@@ -1,6 +1,7 @@
 import React from 'react';
 import { StatusIndicator, TerminalButton } from './terminal';
 import { useAudioEngine } from '../hooks/useAudioEngine';
+import { logger } from '@/utils/logger';
 import ResizableLayout from './ResizableLayout';
 
 import { PresetTooltipOverlay } from './PresetTooltipOverlay';
@@ -56,7 +57,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </div>
                     </TerminalButton>
                     <TerminalButton
-                        onClick={() => console.log('General Settings clicked')}
+                        onClick={() => logger.log('General Settings clicked')}
                         className="hover:border-[var(--color-accent-primary)]/50 group"
                     >
                         <div className="flex items-center gap-2">
