@@ -142,7 +142,7 @@ export class OrbitalBodiesManager {
             ),
         );
         em.addComponent(body.id, createHierarchyComponent(body.parentId ?? null));
-        em.addComponent(body.id, createPresetComponent(body.type, body.presetId));
+        em.addComponent(body.id, createPresetComponent(body.type, body.presetId, body.presetType));
         em.addComponent(body.id, createPhysicsComponent(1, 0.999));
         em.addComponent(body.id, createColliderComponent(body.visualConfig.size));
     }

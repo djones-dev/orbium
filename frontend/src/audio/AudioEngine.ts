@@ -159,16 +159,20 @@ export class AudioEngine {
         position: { radius: number; angle: number },
     ): Promise<void> {
         const id = crypto.randomUUID();
+        const moonColor = preset.type === 'modulator' ? '#9b59b6'
+            : preset.type === 'effect' ? '#e67e22'
+            : '#32CD32';
         const body: OrbitalBody = {
             id,
             type: preset.type === 'generator' ? 'planet' : 'moon',
             presetId: preset.id,
+            presetType: preset.type,
             position,
             velocity: 0.2,
             audioParams: preset.parameters,
             audioLayerId: `layer-${id}`,
             visualConfig: {
-                color: preset.type === 'generator' ? '#4169E1' : '#32CD32',
+                color: preset.type === 'generator' ? '#4169E1' : moonColor,
                 size: preset.type === 'generator' ? 20 : 10,
                 shaderUniforms: {},
             },

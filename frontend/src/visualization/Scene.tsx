@@ -14,6 +14,7 @@ import { usePhysicsLoop } from '../hooks/usePhysicsLoop';
 import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/components/Component';
 import { PositionComponent } from '../ecs/components/PositionComponent';
+import { PresetComponent } from '../ecs/components/PresetComponent';
 import { AudioEventType } from '../events/AudioEvents';
 import { EventBus } from '../events/EventBus';
 
@@ -24,18 +25,77 @@ const PhysicsUpdater = () => {
 };
 
 /**
- * Internal component for handling drag and drop interaction within the 3D scene
+ * Renders faint orbital rings for all planet-level bodies.
+ * Brightens when dragging a modulator/effect to show valid drop targets.
  */
-const DragDropHandler = () => {
+const AllOrbitalRings = ({ isDraggingModulator, highlightedParentId }: {
+    isDraggingModulator: boolean;
+    highlightedParentId: string | null;
+}) => {
+    const groupRef = useRef<THREE.Group>(null);
+    const [rings, setRings] = useState<Array<{ id: string; radius: number }>>([]);
+
+    useEffect(() => {
+        const world = World.getInstance();
+        const bus = EventBus.getInstance();
+
+        const rebuild = () => {
+            const ids = world.entities.query(ComponentType.Position, ComponentType.Preset);
+            const next: Array<{ id: string; radius: number }> = [];
+            for (const id of ids) {
+                if (id === 'sun-primary') continue;
+                const preset = world.entities.getComponent<PresetComponent>(id, ComponentType.Preset);
+                if (preset?.bodyType !== 'planet') continue;
+                const pos = world.entities.getComponent<PositionComponent>(id, ComponentType.Position);
+                if (!pos || pos.radius <= 0) continue;
+                next.push({ id, radius: pos.radius });
+            }
+            setRings(next);
+        };
+
+        rebuild();
+        const unsubAdd = bus.on(AudioEventType.BODY_ADDED, rebuild);
+        const unsubRem = bus.on(AudioEventType.BODY_REMOVED, rebuild);
+        return () => { unsubAdd(); unsubRem(); };
+    }, []);
+
+    return (
+        <group ref={groupRef}>
+            {rings.map(({ id, radius }) => {
+                const isHighlighted = id === highlightedParentId;
+                const opacity = isHighlighted ? 0.55
+                    : isDraggingModulator ? 0.28
+                    : 0.06;
+                const color = isHighlighted ? '#33ff33'
+                    : isDraggingModulator ? '#9b59b6'
+                    : '#33ff33';
+                return (
+                    <mesh key={id} rotation={[-Math.PI / 2, 0, 0]}>
+                        <ringGeometry args={[radius - 0.04, radius + 0.04, 128]} />
+                        <meshBasicMaterial color={color} opacity={opacity} transparent />
+                    </mesh>
+                );
+            })}
+        </group>
+    );
+};
+
+/**
+ * Internal component for handling drag and drop interaction within the 3D scene.
+ * For generator presets: place anywhere on the orbital plane.
+ * For modulator/effect presets: find nearest planet body (within 8 units).
+ */
+const DragDropHandler = ({ onDragStateChange, onHighlightChange }: {
+    onDragStateChange: (isDragging: boolean) => void;
+    onHighlightChange: (id: string | null) => void;
+}) => {
     const { camera, gl } = useThree();
     const { engine } = useAudioEngine();
     const showToast = useUIStore(s => s.showToast);
 
-    // Visual preview of the drop
     const previewRef = useRef<THREE.Mesh>(null);
     const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), []);
     const raycaster = useMemo(() => new THREE.Raycaster(), []);
-    // Re-use vector to avoid GC
     const pointer = useMemo(() => new THREE.Vector2(), []);
     const target = useMemo(() => new THREE.Vector3(), []);
 
@@ -44,106 +104,128 @@ const DragDropHandler = () => {
 
         const getRaycastIntersection = (clientX: number, clientY: number) => {
             const rect = canvas.getBoundingClientRect();
-            // Convert to Normalized Device Coordinates (-1 to +1)
             pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
             pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
-
             raycaster.setFromCamera(pointer, camera);
             return raycaster.ray.intersectPlane(plane, target);
-        }
+        };
+
+        const isDraggingModulatorOrEffect = (e: DragEvent) => {
+            return e.dataTransfer!.types.some(
+                t => t === 'presettype/modulator' || t === 'presettype/effect'
+            );
+        };
+
+        /** Find nearest planet within maxDist to the drop point */
+        const findNearestParent = (maxDist: number): string | undefined => {
+            const world = World.getInstance();
+            const ids = world.entities.query(ComponentType.Position, ComponentType.Preset);
+            let nearest: string | undefined;
+            let nearestDist = maxDist;
+
+            for (const id of ids) {
+                if (id === 'sun-primary') continue;
+                const preset = world.entities.getComponent<PresetComponent>(id, ComponentType.Preset);
+                // Only planets can be parents for modulators/effects
+                if (preset?.bodyType !== 'planet') continue;
+
+                const pos = world.entities.getComponent<PositionComponent>(id, ComponentType.Position);
+                if (!pos) continue;
+
+                const bx = pos.radius * Math.cos(pos.angle);
+                const bz = pos.radius * Math.sin(pos.angle);
+                const dist = Math.sqrt((target.x - bx) ** 2 + (target.z - bz) ** 2);
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    nearest = id;
+                }
+            }
+            return nearest;
+        };
 
         const handleDragOver = (e: DragEvent) => {
             e.preventDefault();
             e.dataTransfer!.dropEffect = 'copy';
 
             const hit = getRaycastIntersection(e.clientX, e.clientY);
+            if (!hit) return;
 
-            if (hit && previewRef.current) {
+            if (previewRef.current) {
                 previewRef.current.visible = true;
-
-                // Logic: Check if over existing planet for Modulators
-                // For now, just show at cursor position
                 previewRef.current.position.copy(target);
+            }
+
+            const isModOrEffect = isDraggingModulatorOrEffect(e);
+            onDragStateChange(isModOrEffect);
+
+            if (isModOrEffect) {
+                const nearestId = findNearestParent(8.0);
+                onHighlightChange(nearestId ?? null);
             }
         };
 
         const handleDragLeave = () => {
             if (previewRef.current) previewRef.current.visible = false;
+            onDragStateChange(false);
+            onHighlightChange(null);
         };
 
         const handleDrop = async (e: DragEvent) => {
             e.preventDefault();
             if (previewRef.current) previewRef.current.visible = false;
+            onDragStateChange(false);
+            onHighlightChange(null);
 
             const presetId = e.dataTransfer!.getData('presetId');
             if (!presetId) return;
 
             const hit = getRaycastIntersection(e.clientX, e.clientY);
+            if (!hit) return;
 
-            if (hit) {
-                const radius = Math.sqrt(target.x ** 2 + target.z ** 2);
-                const angle = Math.atan2(target.z, target.x);
+            const radius = Math.sqrt(target.x ** 2 + target.z ** 2);
+            const angle = Math.atan2(target.z, target.x);
 
-                // Check Overlaps via ECS
-                const world = World.getInstance();
-                const entityIds = world.entities.query(ComponentType.Position);
-                let parentId: string | undefined;
+            try {
+                const preset = await presetService.getPreset(presetId);
+                if (!preset) return;
 
-                // Simple overlap check (radius < 2 units)
-                for (const id of entityIds) {
-                    if (id !== 'sun-primary') {
-                        const pos = world.entities.getComponent<PositionComponent>(id, ComponentType.Position);
-                        if (!pos) continue;
+                if (preset.type === 'generator') {
+                    await engine.instantiateBodyFromPreset(preset, { radius, angle });
+                    showToast('PLANET CREATED', 'success');
 
-                        const bx = pos.radius * Math.cos(pos.angle);
-                        const bz = pos.radius * Math.sin(pos.angle);
-                        const dist = Math.sqrt((target.x - bx) ** 2 + (target.z - bz) ** 2);
-                        if (dist < 2.0) {
-                            parentId = id;
-                            break;
-                        }
+                } else if (preset.type === 'modulator' || preset.type === 'effect') {
+                    // Find nearest planet within generous range (8 units)
+                    const parentId = findNearestParent(8.0);
+                    if (!parentId) {
+                        showToast('Drop near a planet to attach', 'error');
+                        return;
                     }
+
+                    const moonColor = preset.type === 'modulator' ? '#9b59b6' : '#e67e22';
+                    const id = crypto.randomUUID();
+                    const body: OrbitalBody = {
+                        id,
+                        type: 'moon',
+                        presetType: preset.type,
+                        presetId: preset.id,
+                        position: { radius: 1.8, angle: 0 },
+                        velocity: 0.8,
+                        audioParams: preset.parameters,
+                        audioLayerId: `layer-${id}`,
+                        visualConfig: {
+                            color: moonColor,
+                            size: 8,
+                            shaderUniforms: {}
+                        },
+                        parentId,
+                    };
+                    await engine.bodiesManager.addBody(body);
+                    const label = preset.type === 'modulator' ? 'MODULATOR' : 'EFFECT';
+                    showToast(`${label} ATTACHED`, 'success');
                 }
-
-                try {
-                    const preset = await presetService.getPreset(presetId);
-                    if (!preset) return;
-
-                    // Decision: Generator vs Modulator
-                    if (preset.type === 'modulator' || (preset.type === 'effect' && parentId)) {
-                        // Must drop on parent
-                        if (!parentId) {
-                            showToast('Modulators must be dropped on a planet', 'error');
-                            return;
-                        }
-                        // Create Moon/Modulator
-                        const id = crypto.randomUUID();
-                        const body: OrbitalBody = {
-                            id,
-                            type: 'moon',
-                            presetId: preset.id,
-                            position: { radius: 1.5, angle: 0 }, // Relative to parent
-                            velocity: 0.5,
-                            audioParams: preset.parameters,
-                            audioLayerId: `layer-${id}`,
-                            visualConfig: {
-                                color: '#32CD32',
-                                size: 8,
-                                shaderUniforms: {}
-                            },
-                            parentId: parentId
-                        };
-                        await engine.bodiesManager.addBody(body);
-                        showToast('MOON CREATED', 'success');
-
-                    } else if (preset.type === 'generator') {
-                        await engine.instantiateBodyFromPreset(preset, { radius, angle });
-                        showToast('PLANET CREATED', 'success');
-                    }
-                } catch (err) {
-                    logger.error(err);
-                    showToast('Failed to instantiate preset', 'error');
-                }
+            } catch (err) {
+                logger.error(err);
+                showToast('Failed to instantiate preset', 'error');
             }
         };
 
@@ -155,8 +237,9 @@ const DragDropHandler = () => {
             canvas.removeEventListener('dragover', handleDragOver);
             canvas.removeEventListener('dragleave', handleDragLeave);
             canvas.removeEventListener('drop', handleDrop);
-        }
-    }, [camera, gl, plane, engine, showToast, pointer, target, raycaster]);
+        };
+    }, [camera, gl, plane, engine, showToast, pointer, target, raycaster,
+        onDragStateChange, onHighlightChange]);
 
     return (
         <mesh ref={previewRef} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
@@ -164,50 +247,43 @@ const DragDropHandler = () => {
             <meshBasicMaterial color="white" opacity={0.4} transparent side={THREE.DoubleSide} />
         </mesh>
     );
-}
+};
 
 /**
  * 3D visualization scene for Orbium
  */
 const Scene = () => {
-    // Calculate camera position: 30° above orbital plane, distance 15
     const cameraDistance = 15;
-    const cameraAngle = Math.PI / 6; // 30 degrees in radians
+    const cameraAngle = Math.PI / 6;
     const cameraY = Math.sin(cameraAngle) * cameraDistance;
     const cameraZ = Math.cos(cameraAngle) * cameraDistance;
 
     const { selectedBodyId } = useSelection();
     const [renderData, setRenderData] = useState<string[]>([]);
+    const [isDraggingModulator, setIsDraggingModulator] = useState(false);
+    const [highlightedParentId, setHighlightedParentId] = useState<string | null>(null);
 
     useEffect(() => {
         const world = World.getInstance();
         const bus = EventBus.getInstance();
 
         const updateRenderData = () => {
-            // We only need the IDs for mapping to <Sun /> components
-            // RenderSystem handles the x/z projection inside Sun's useFrame (via PhysicsSystem)
             const ids = world.entities.query(ComponentType.Position, ComponentType.Visual);
             setRenderData([...ids]);
         };
 
-        // Initial load
         updateRenderData();
-
-        // Subscribe to body lifecycle events
         const unsubAdd = bus.on(AudioEventType.BODY_ADDED, updateRenderData);
         const unsubRem = bus.on(AudioEventType.BODY_REMOVED, updateRenderData);
-
-        return () => { 
-            unsubAdd();
-            unsubRem();
-        };
+        return () => { unsubAdd(); unsubRem(); };
     }, []);
 
-    // Helper to get selected body position for the orbit ring
-    const selectedBodyPos = useMemo(() => {
+    // Selected body orbit ring
+    const selectedBodyRadius = useMemo(() => {
         if (!selectedBodyId) return null;
         const world = World.getInstance();
-        return world.entities.getComponent<PositionComponent>(selectedBodyId, ComponentType.Position);
+        const pos = world.entities.getComponent<PositionComponent>(selectedBodyId, ComponentType.Position);
+        return pos && pos.radius > 0 ? pos.radius : null;
     }, [selectedBodyId]);
 
     return (
@@ -218,13 +294,9 @@ const Scene = () => {
                     fov: 60
                 }}
             >
-                {/* Deep space black background */}
                 <color attach="background" args={['#050508']} />
-
-                {/* Subtle ambient lighting */}
                 <ambientLight intensity={0.1} />
 
-                {/* Star field - very dim, distant */}
                 <Stars
                     radius={100}
                     depth={50}
@@ -235,15 +307,21 @@ const Scene = () => {
                     speed={0.5}
                 />
 
-                {/* Render All Bodies */}
+                {/* Subtle background rings for all planet orbits */}
+                <AllOrbitalRings
+                    isDraggingModulator={isDraggingModulator}
+                    highlightedParentId={highlightedParentId}
+                />
+
+                {/* Render all bodies */}
                 {renderData.map(id => (
                     <Sun key={id} id={id} />
                 ))}
 
-                {/* Selected Body Orbit Path */}
-                {selectedBodyPos && selectedBodyPos.radius > 0 && (
+                {/* Selected body orbit ring (bright green) */}
+                {selectedBodyRadius && (
                     <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                        <ringGeometry args={[selectedBodyPos.radius - 0.05, selectedBodyPos.radius + 0.05, 128]} />
+                        <ringGeometry args={[selectedBodyRadius - 0.05, selectedBodyRadius + 0.05, 128]} />
                         <meshBasicMaterial
                             color="#33ff33"
                             opacity={0.25}
@@ -252,7 +330,7 @@ const Scene = () => {
                     </mesh>
                 )}
 
-                {/* Reference grid at orbital plane (subtle, for development) */}
+                {/* Reference grid */}
                 <gridHelper
                     args={[20, 20, '#33ff33', '#33ff33']}
                     position={[0, -0.01, 0]}
@@ -260,7 +338,6 @@ const Scene = () => {
                     material-transparent
                 />
 
-                {/* Camera controls with smooth damping */}
                 <OrbitControls
                     makeDefault
                     enableDamping
@@ -270,7 +347,10 @@ const Scene = () => {
                     target={[0, 0, 0]}
                 />
 
-                <DragDropHandler />
+                <DragDropHandler
+                    onDragStateChange={setIsDraggingModulator}
+                    onHighlightChange={setHighlightedParentId}
+                />
                 <PhysicsUpdater />
             </Canvas>
         </div>
