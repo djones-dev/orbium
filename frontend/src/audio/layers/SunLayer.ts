@@ -1,4 +1,5 @@
 import { AudioLayer, SunParameters } from '../../types/audio';
+import { logger } from '@/utils/logger';
 
 /**
  * SunLayer — Professional Audio Implementation
@@ -98,11 +99,11 @@ export class SunLayer implements AudioLayer {
                 parameterData: { color: 2.0 },
             });
             worklet.onprocessorerror = (err: Event) => {
-                console.error('NoiseProcessor Error:', err);
+                logger.error('NoiseProcessor Error:', err);
             };
             this.noiseNode = worklet;
         } catch (e) {
-            console.warn('SunLayer: Noise processor unavailable, using silent fallback.', e);
+            logger.warn('SunLayer: Noise processor unavailable, using silent fallback.', e);
             const silence = context.createGain();
             silence.gain.value = 0;
             this.noiseNode = silence;
