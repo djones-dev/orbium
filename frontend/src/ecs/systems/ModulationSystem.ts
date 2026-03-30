@@ -4,7 +4,6 @@ import { ComponentType } from '../components/Component';
 import { ModulationComponent } from '../components/ModulationComponent';
 import { AudioComponent } from '../components/AudioComponent';
 import { World } from '../World';
-import { SunParameters } from '../../types/audio';
 
 /**
  * ModulationSystem — routes parameter values between entities.

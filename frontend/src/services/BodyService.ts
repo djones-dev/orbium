@@ -1,6 +1,5 @@
 import { OrbitalBody } from '../types/orbital';
 import { SunParameters } from '../types/audio';
-import { logger } from '@/utils/logger';
 
 class BodyServiceError extends Error {
     constructor(message: string, public originalError?: any) {
