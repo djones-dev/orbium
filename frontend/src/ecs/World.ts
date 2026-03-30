@@ -2,6 +2,7 @@ import { EntityManager } from './EntityManager';
 import { System } from './systems/System';
 import { MovementSystem } from './systems/MovementSystem';
 import { HierarchySystem } from './systems/HierarchySystem';
+import { ModulationSystem } from './systems/ModulationSystem';
 import { AudioSystem } from './systems/AudioSystem';
 import { RenderSystem } from './systems/RenderSystem';
 
@@ -20,6 +21,7 @@ export class World {
     readonly entities: EntityManager;
     readonly hierarchy: HierarchySystem;
     readonly movement: MovementSystem;
+    readonly modulation: ModulationSystem;
     readonly audio: AudioSystem;
     readonly render: RenderSystem;
 
@@ -29,10 +31,11 @@ export class World {
         this.entities = new EntityManager();
         this.hierarchy = new HierarchySystem();
         this.movement = new MovementSystem();
+        this.modulation = new ModulationSystem();
         this.audio = new AudioSystem();
         this.render = new RenderSystem();
 
-        this.systems = [this.hierarchy, this.movement, this.audio, this.render];
+        this.systems = [this.hierarchy, this.movement, this.modulation, this.audio, this.render];
         // Systems are already in priority order; sort defensively for future additions.
         this.systems.sort((a, b) => a.priority - b.priority);
     }
