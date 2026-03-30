@@ -7,7 +7,9 @@ import { AudioEngine } from '../audio/AudioEngine';
 
 export const MixerTab: React.FC = () => {
     const { manager } = useSelection();
-    const [bodies, setBodies] = useState<OrbitalBody[]>(manager.getBodies());
+    const [bodies, setBodies] = useState<OrbitalBody[]>(
+        manager.getBodies().filter((b: OrbitalBody) => b.type === 'sun' || b.type === 'planet')
+    );
     
     const masterGain = useUIStore(state => state.masterGain);
     const setMasterGain = useUIStore(state => state.setMasterGain);
@@ -18,7 +20,7 @@ export const MixerTab: React.FC = () => {
 
     useEffect(() => {
         const unsub = manager.subscribe(() => {
-            setBodies(manager.getBodies());
+            setBodies(manager.getBodies().filter((b: OrbitalBody) => b.type === 'sun' || b.type === 'planet'));
         });
         return unsub;
     }, [manager]);

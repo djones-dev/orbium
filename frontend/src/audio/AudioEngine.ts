@@ -142,6 +142,10 @@ export class AudioEngine {
     private handleBodyAdded(body: OrbitalBody): void {
         if (!this.context || !this.masterChain) return;
         if (body.type === 'sun') return;
+        
+        // Modulators (moons) don't have their own sound
+        if (body.type === 'moon') return;
+        
         if (this.layers.has(body.id)) return;
 
         const layer = LayerFactory.create(this.context, {

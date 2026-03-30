@@ -7,6 +7,7 @@ export enum ComponentType {
     Preset = 'preset',
     Physics = 'physics',
     Modulation = 'modulation',
+    Effect = 'effect',
     Collider = 'collider',
     Metadata = 'metadata',
 }

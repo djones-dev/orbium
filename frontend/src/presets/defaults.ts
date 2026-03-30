@@ -61,7 +61,9 @@ export const DEFAULT_PRESETS: Preset[] = [
         category: 'moon',
         parameters: {
             lfoRate: 0.5,
-            detuneSpread: 10
+            detuneSpread: 10,
+            modDepth: 30,
+            modTarget: 'filterCutoff'
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
@@ -75,7 +77,9 @@ export const DEFAULT_PRESETS: Preset[] = [
         category: 'moon',
         parameters: {
             lfoRate: 8.0,
-            detuneSpread: 25
+            detuneSpread: 25,
+            modDepth: 15,
+            modTarget: 'rootFrequency'
         },
         is_default: true,
         created_at: new Date(now).toISOString(),

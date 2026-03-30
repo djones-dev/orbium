@@ -15,6 +15,7 @@ import { AudioComponent } from '../ecs/components/AudioComponent';
 import { VisualComponent } from '../ecs/components/VisualComponent';
 import { PresetComponent } from '../ecs/components/PresetComponent';
 import { PositionComponent } from '../ecs/components/PositionComponent';
+import { EffectComponent } from '../ecs/components/EffectComponent';
 
 type BodyVariant = 'sun' | 'planet' | 'moon';
 
@@ -31,6 +32,7 @@ export const Sun = React.memo(({ id }: { id: string }) => {
     const groupRef = useRef<THREE.Group>(null);
     const meshRef = useRef<THREE.Mesh>(null);
     const ringRef = useRef<THREE.Mesh>(null);
+    const atmosphereRef = useRef<THREE.Mesh>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const { selectedBodyId, select } = useSelection();
 
@@ -112,6 +114,17 @@ export const Sun = React.memo(({ id }: { id: string }) => {
     useFrame((state) => {
         if (!groupRef.current) return;
         const world = World.getInstance();
+
+        // Check for atmosphere effect
+        const effectComp = world.entities.getComponent<EffectComponent>(id, ComponentType.Effect);
+        const hasAtmosphere = effectComp?.effects.some(e => e.type === 'atmosphere');
+        if (atmosphereRef.current) {
+            atmosphereRef.current.visible = !!hasAtmosphere;
+            if (hasAtmosphere) {
+                const pulse = 1.0 + Math.sin(state.clock.elapsedTime * 0.5) * 0.05;
+                atmosphereRef.current.scale.setScalar(pulse);
+            }
+        }
 
         if (materialRef.current) {
             materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
@@ -218,6 +231,19 @@ export const Sun = React.memo(({ id }: { id: string }) => {
                     side={THREE.DoubleSide}
                 />
             </mesh>
+
+            {/* Visual Atmosphere Effect */}
+            {bodyVariant === 'planet' && (
+                <mesh ref={atmosphereRef} visible={false}>
+                    <sphereGeometry args={[geoRadius * 1.4, 32, 32]} />
+                    <meshBasicMaterial 
+                        color={bodyColor} 
+                        transparent 
+                        opacity={0.15} 
+                        side={THREE.BackSide}
+                    />
+                </mesh>
+            )}
 
             {/* Pulsing orbit ring for modulator moons */}
             {isModulatorMoon && (

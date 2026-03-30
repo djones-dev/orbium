@@ -1,3 +1,5 @@
+export type EffectType = 'distortion' | 'phaser' | 'flanger' | 'delay' | 'reverb' | 'atmosphere';
+
 export interface SunParameters {
     rootFrequency: number; // Hz
     filterCutoff: number;  // Hz (was brightness)
@@ -6,13 +8,14 @@ export interface SunParameters {
     lfoRate: number;       // Hz (was pulseRate)
     gainLevel: number;     // dB (was volume)
     waveform: 'sine' | 'triangle' | 'sawtooth' | 'square';
-    distortion: number; // 0-100
+    distortion: number; // 0-100 (Legacy - move to effects eventually?)
     noiseVol: number; // dB
     subVol: number; // dB
     noiseEnabled: boolean;
     subEnabled: boolean;
     modDepth?: number; // 0-100%
     modTarget?: string; // key of target param
+    effects?: EffectType[]; // Active effects
 }
 
 export interface AudioLayer {

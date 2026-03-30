@@ -2,7 +2,8 @@ import { Component, ComponentType } from './Component';
 import { SunParameters } from '../../types/audio';
 
 export interface ModulationRoute {
-    sourceParam: keyof SunParameters; // e.g. 'rootFrequency'
+    sourceType: 'parameter' | 'orbit';
+    sourceParam?: keyof SunParameters; // e.g. 'rootFrequency', used if sourceType === 'parameter'
     targetEntityId: string;
     targetParam: keyof SunParameters;
     depth: number; // 0–1 mix

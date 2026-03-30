@@ -28,6 +28,32 @@ const WAVEFORM_OPTIONS = [
 
 type UnitMode = 'Hz' | 'Note' | 'ms';
 
+const ModulationTargetPicker: React.FC<{
+    value: string;
+    onChange: (val: string) => void;
+}> = ({ value, onChange }) => {
+    return (
+        <div className="flex flex-col gap-1.5 w-full">
+            <div className="text-[9px] text-[var(--color-text-secondary)] opacity-80 uppercase tracking-tighter">Target Parameter</div>
+            <div className="grid grid-cols-2 gap-1">
+                {MODULATABLE_PARAMS.map(p => (
+                    <button
+                        key={p.value}
+                        onClick={() => onChange(p.value)}
+                        className={`text-[8px] p-1 border rounded transition-all uppercase font-bold text-center ${
+                            value === p.value 
+                                ? 'bg-[var(--color-accent-primary)]/20 border-[var(--color-accent-primary)] text-[var(--color-accent-primary)] shadow-[0_0_8px_rgba(51,255,51,0.2)]'
+                                : 'bg-black/20 border-[var(--color-border)]/30 text-[var(--color-text-secondary)] hover:border-[var(--color-border)]'
+                        }`}
+                    >
+                        {p.label}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 export const ParameterEditor: React.FC = () => {
     const { selectedBody, manager } = useSelection();
     const showToast = useUIStore(state => state.showToast);
@@ -295,25 +321,17 @@ export const ParameterEditor: React.FC = () => {
                                     size={40}
                                 />
                                 <div className="w-px bg-[var(--color-border)] opacity-20 h-2/3"></div>
-                                <div className="flex flex-col gap-2 w-28">
+                                <div className="flex flex-col gap-2 w-36">
                                     <TerminalSelect
                                         label="SHAPE"
                                         value={getStringParam('waveform', 'sine')}
                                         options={WAVEFORM_OPTIONS}
                                         onChange={(v) => { onParamChange('waveform', v); onParamCommit(); }}
                                     />
-                                    <div className="flex flex-col gap-1">
-                                        <div className="text-[9px] text-[var(--color-text-secondary)] opacity-80 uppercase">Target</div>
-                                        <select
-                                            value={getStringParam('modTarget', 'filterCutoff')}
-                                            onChange={(e) => { onParamChange('modTarget', e.target.value); onParamCommit(); }}
-                                            className="bg-[var(--color-bg)] border border-[var(--color-border)] text-[10px] p-1.5 outline-none text-[var(--color-accent-primary)] font-mono uppercase w-full rounded hover:border-[var(--color-accent-secondary)] transition-colors focus:border-[var(--color-accent-primary)]"
-                                        >
-                                            {MODULATABLE_PARAMS.map(p => (
-                                                <option key={p.value} value={p.value}>{p.label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <ModulationTargetPicker
+                                        value={getStringParam('modTarget', 'filterCutoff')}
+                                        onChange={(v) => { onParamChange('modTarget', v); onParamCommit(); }}
+                                    />
                                 </div>
                             </>
                         )}

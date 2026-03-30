@@ -1,5 +1,4 @@
 import { OrbitalBody } from '../types/orbital';
-import { SunParameters } from '../types/audio';
 import { bodyService } from '../services/BodyService';
 import { EventBus } from '../events/EventBus';
 import {
@@ -20,7 +19,11 @@ import { createPresetComponent, PresetComponent } from '../ecs/components/Preset
 import { createPhysicsComponent } from '../ecs/components/PhysicsComponent';
 import { createColliderComponent } from '../ecs/components/ColliderComponent';
 import { createMetadataComponent, MetadataComponent } from '../ecs/components/MetadataComponent';
+import { createModulationComponent, ModulationRoute, ModulationComponent } from '../ecs/components/ModulationComponent';
+import { createEffectComponent, EffectComponent, EffectInstance } from '../ecs/components/EffectComponent';
 import { logger } from '../utils/logger';
+import { EffectType, SunParameters } from '../types/audio';
+import { AudioEngine } from '../audio/AudioEngine';
 
 export class OrbitalBodiesManager {
     private listeners = new Set<() => void>();
@@ -113,12 +116,54 @@ export class OrbitalBodiesManager {
         params: Partial<SunParameters>,
         sync: boolean = true,
     ): Promise<void> {
-        const audio = World.getInstance().entities.getComponent<AudioComponent>(id, ComponentType.Audio);
+        const em = World.getInstance().entities;
+        const audio = em.getComponent<AudioComponent>(id, ComponentType.Audio);
         if (!audio) return;
 
+        audio.baseParameters = { ...audio.baseParameters, ...params };
+        // ModulationSystem will reconcile these into .parameters every frame.
+        // For immediate feedback and non-modulated entities:
         audio.parameters = { ...audio.parameters, ...params };
+
+        // If modTarget or modDepth changed, update ModulationComponent routes
+        if (params.modTarget !== undefined || params.modDepth !== undefined) {
+            let modComp = em.getComponent<ModulationComponent>(id, ComponentType.Modulation);
+            const hierarchy = em.getComponent<HierarchyComponent>(id, ComponentType.Hierarchy);
+            const preset = em.getComponent<PresetComponent>(id, ComponentType.Preset);
+            
+            if (hierarchy?.parentId && (preset?.bodyType === 'moon' || id.startsWith('moon-'))) {
+                const target = params.modTarget ?? audio.baseParameters.modTarget;
+                const depth = params.modDepth ?? audio.baseParameters.modDepth;
+                
+                if (target && depth !== undefined) {
+                    const routes: ModulationRoute[] = [{
+                        sourceType: 'orbit',
+                        targetEntityId: hierarchy.parentId,
+                        targetParam: target as keyof SunParameters,
+                        depth: depth / 100,
+                    }];
+
+                    if (!modComp) {
+                        em.addComponent(id, createModulationComponent(routes));
+                    } else {
+                        modComp.routes = routes;
+                    }
+                }
+            }
+        }
+
         this.bus.emit<ParamsChangedEvent>(AudioEventType.PARAMS_CHANGED, { id, params });
         this.notify();
+
+        // If effects changed in params, update EffectComponent
+        if (params.effects !== undefined) {
+            let effectComp = em.getComponent<EffectComponent>(id, ComponentType.Effect);
+            if (!effectComp) {
+                effectComp = createEffectComponent();
+                em.addComponent(id, effectComp);
+            }
+            effectComp.effects = params.effects.map(type => ({ type, intensity: 1.0 }));
+        }
 
         if (sync && id !== 'sun-primary') {
             try {
@@ -150,7 +195,25 @@ export class OrbitalBodiesManager {
     }
 
     async addAttribute(bodyId: string, attributePresetId: string): Promise<void> {
+        const em = World.getInstance().entities;
+        const audio = em.getComponent<AudioComponent>(bodyId, ComponentType.Audio);
+        if (!audio) return;
+
         try {
+            // Get preset to know what kind of effect it is
+            const preset = await AudioEngine.getInstance().presets.getPresetById(attributePresetId);
+            if (!preset) return;
+
+            const effectType = (preset.name.toLowerCase().includes('distortion') || preset.id.includes('distortion')) ? 'distortion' 
+                             : (preset.name.toLowerCase().includes('sweep') || preset.id.includes('filter')) ? 'atmosphere'
+                             : 'delay' as EffectType;
+
+            const currentEffects = audio.baseParameters.effects || [];
+            if (!currentEffects.includes(effectType)) {
+                const newEffects = [...currentEffects, effectType];
+                await this.updateBodyParams(bodyId, { effects: newEffects });
+            }
+
             await bodyService.addAttribute(bodyId, { preset_id: attributePresetId });
         } catch (error) {
             logger.error('Failed to add attribute:', error);
@@ -191,6 +254,37 @@ export class OrbitalBodiesManager {
         em.addComponent(body.id, createPresetComponent(body.type, body.presetId, body.presetType));
         em.addComponent(body.id, createPhysicsComponent(1, 0.999));
         em.addComponent(body.id, createColliderComponent(body.visualConfig.size));
+
+        // Add Effect component
+        const initialEffects: EffectInstance[] = (body.audioParams.effects || []).map(type => ({ type, intensity: 1.0 }));
+        em.addComponent(body.id, createEffectComponent(initialEffects));
+
+        // Add modulation if this is a moon (modulator/effect) and has a parent
+        if (body.type === 'moon' && body.parentId) {
+            const routes: ModulationRoute[] = [];
+
+            // If it has modDepth and modTarget, it's a dynamic modulator
+            if (body.audioParams.modDepth !== undefined && body.audioParams.modTarget) {
+                routes.push({
+                    sourceType: 'orbit',
+                    targetEntityId: body.parentId,
+                    targetParam: body.audioParams.modTarget as keyof SunParameters,
+                    depth: body.audioParams.modDepth / 100, // normalized 0-1
+                });
+            } else if (body.presetType === 'effect' || body.presetType === 'modulator') {
+                // Fallback: default modulation for these types if not explicitly configured
+                routes.push({
+                    sourceType: 'orbit',
+                    targetEntityId: body.parentId,
+                    targetParam: 'filterCutoff',
+                    depth: 0.3,
+                });
+            }
+
+            if (routes.length > 0) {
+                em.addComponent(body.id, createModulationComponent(routes));
+            }
+        }
         
         if (body.name) {
             em.addComponent(body.id, createMetadataComponent(body.name));
@@ -215,13 +309,19 @@ export class OrbitalBodiesManager {
 
         if (!pos || !audio || !visual) return undefined;
 
+        const effectComp = em.getComponent<EffectComponent>(id, ComponentType.Effect);
+        const audioParams = { ...audio.baseParameters };
+        if (effectComp) {
+            audioParams.effects = effectComp.effects.map(e => e.type);
+        }
+
         return {
             id,
             name: metadata?.name,
             type: preset?.bodyType ?? (id === 'sun-primary' ? 'sun' : 'planet'),
             position: { radius: pos.radius, angle: pos.angle },
             velocity: vel?.angular ?? 0,
-            audioParams: audio.parameters,
+            audioParams,
             audioLayerId: audio.layerId,
             visualConfig: {
                 color: visual.color,

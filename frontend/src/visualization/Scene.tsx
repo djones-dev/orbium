@@ -296,27 +296,33 @@ const DragDropHandler = ({
                         return;
                     }
 
-                    const moonColor = preset.type === 'modulator' ? '#9b59b6' : '#e67e22';
-                    const id = crypto.randomUUID();
-                    const body: OrbitalBody = {
-                        id,
-                        type: 'moon',
-                        presetType: preset.type,
-                        presetId: preset.id,
-                        position: { radius: MOON_LOCAL_ORBIT_RADIUS, angle: 0 },
-                        velocity: 0.8,
-                        audioParams: preset.parameters,
-                        audioLayerId: `layer-${id}`,
-                        visualConfig: {
-                            color: moonColor,
-                            size: 8,
-                            shaderUniforms: {}
-                        },
-                        parentId,
-                    };
-                    await engine.bodiesManager.addBody(body);
-                    const label = preset.type === 'modulator' ? 'MODULATOR' : 'EFFECT';
-                    showToast(`${label} ATTACHED`, 'success');
+                    if (preset.type === 'effect') {
+                        // Effects are attributes on the parent, not new bodies
+                        await engine.bodiesManager.addAttribute(parentId, preset.id);
+                        showToast('EFFECT APPLIED', 'success');
+                    } else {
+                        // Modulators are moons
+                        const moonColor = '#9b59b6';
+                        const id = crypto.randomUUID();
+                        const body: OrbitalBody = {
+                            id,
+                            type: 'moon',
+                            presetType: preset.type,
+                            presetId: preset.id,
+                            position: { radius: MOON_LOCAL_ORBIT_RADIUS, angle: 0 },
+                            velocity: 0.8,
+                            audioParams: preset.parameters,
+                            audioLayerId: `layer-${id}`,
+                            visualConfig: {
+                                color: moonColor,
+                                size: 8,
+                                shaderUniforms: {}
+                            },
+                            parentId,
+                        };
+                        await engine.bodiesManager.addBody(body);
+                        showToast('MODULATOR ATTACHED', 'success');
+                    }
                 }
             } catch (err) {
                 logger.error(err);

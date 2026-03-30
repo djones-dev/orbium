@@ -33,6 +33,10 @@ export class SunLayer implements AudioLayer {
     private lfo: OscillatorNode;
     private lfoGain: GainNode;
 
+    private delayNode: DelayNode;
+    private delayGain: GainNode;
+    private delayFeedback: GainNode;
+
     private params: SunParameters = {
         rootFrequency: 110,
         filterCutoff: 1000,
@@ -46,6 +50,7 @@ export class SunLayer implements AudioLayer {
         noiseEnabled: true,
         subEnabled: true,
         filterResonance: 1.0,
+        effects: [],
     };
 
     constructor(context: AudioContext, id: string = crypto.randomUUID()) {
@@ -61,7 +66,23 @@ export class SunLayer implements AudioLayer {
         this.filter = context.createBiquadFilter();
         this.filter.type = 'lowpass';
         this.filter.Q.value = 1.0;
+
+        // Effects Chain
+        this.delayNode = context.createDelay(1.0);
+        this.delayNode.delayTime.value = 0.4;
+        this.delayGain = context.createGain();
+        this.delayGain.gain.value = 0;
+        this.delayFeedback = context.createGain();
+        this.delayFeedback.gain.value = 0.4;
+
         this.filter.connect(this.outputGain);
+        
+        // Delay loop
+        this.filter.connect(this.delayNode);
+        this.delayNode.connect(this.delayFeedback);
+        this.delayFeedback.connect(this.delayNode);
+        this.delayNode.connect(this.delayGain);
+        this.delayGain.connect(this.outputGain);
 
         this.distortionNode = context.createWaveShaper();
         this.distortionNode.oversample = '4x';
@@ -158,7 +179,7 @@ export class SunLayer implements AudioLayer {
         const {
             rootFrequency, filterCutoff, detuneSpread, lfoRate,
             gainLevel, waveform, distortion, noiseVol, subVol,
-            noiseEnabled, subEnabled, filterResonance,
+            noiseEnabled, subEnabled, filterResonance, effects,
         } = this.params;
 
         const now = this.context.currentTime;
@@ -187,6 +208,16 @@ export class SunLayer implements AudioLayer {
 
         if (distortion !== undefined && distortion !== prev.distortion) {
             this.distortionNode.curve = this.makeTanhCurve(distortion);
+        }
+
+        // Handle Effects
+        if (effects) {
+            const hasDelay = effects.includes('delay') || effects.includes('reverb');
+            this.delayGain.gain.setTargetAtTime(hasDelay ? 0.4 : 0, now, ramp);
+            
+            if (effects.includes('distortion')) {
+                this.distortionNode.curve = this.makeTanhCurve(80);
+            }
         }
 
         const subTarget = subEnabled !== false ? Math.pow(10, (subVol ?? -12) / 20) : 0;
