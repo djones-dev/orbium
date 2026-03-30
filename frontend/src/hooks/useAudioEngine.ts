@@ -40,10 +40,15 @@ export const useAudioEngine = () => {
         }
     }, [isPlaying, setPlaying]);
 
+    const resetScene = useCallback(async () => {
+        await engineRef.current.resetScene();
+    }, []);
+
     return {
         engine: engineRef.current,
         initializeAudio,
         togglePlayback,
+        resetScene,
         isAudioActive,
         isPlaying
     };

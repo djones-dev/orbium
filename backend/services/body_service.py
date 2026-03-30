@@ -46,6 +46,11 @@ def delete_body(db: Session, body_id: UUID) -> bool:
     db.commit()
     return True
 
+def delete_all_bodies(db: Session, user_id: str = "anonymous") -> int:
+    count = db.query(BodyInstance).filter(BodyInstance.user_id == user_id).delete()
+    db.commit()
+    return count
+
 def add_attribute(db: Session, body_id: UUID, attribute: dict) -> Optional[BodyInstance]:
     db_body = get_body(db, body_id)
     if not db_body:

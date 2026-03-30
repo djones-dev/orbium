@@ -106,7 +106,21 @@ export class AudioEngine {
                 false,
             );
 
-            await this.bodiesManager.loadFromBackend();
+            // Ensure preset cache is populated before loading bodies so we can
+            // restore presetType and visual color for saved moons
+            await this.presets.loadPresets();
+
+            await this.bodiesManager.loadFromBackend((body) => {
+                if (!body.presetId) return;
+                const preset = this.presets.getPresetById(body.presetId);
+                if (!preset) return;
+                body.presetType = preset.type as OrbitalBody['presetType'];
+                if (body.type === 'moon') {
+                    body.visualConfig.color = preset.type === 'modulator' ? '#9b59b6'
+                        : preset.type === 'effect' ? '#e67e22'
+                        : '#32CD32';
+                }
+            });
 
             logger.log('Audio Engine Initialized');
             
@@ -178,6 +192,10 @@ export class AudioEngine {
             },
         };
         await this.bodiesManager.addBody(body);
+    }
+
+    public async resetScene(): Promise<void> {
+        await this.bodiesManager.resetScene();
     }
 
     public updateSunParams(params: Partial<SunParameters>): void {
