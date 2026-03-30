@@ -5,6 +5,7 @@ export type OrbitalBodyType = 'sun' | 'planet' | 'moon';
 
 export interface OrbitalBody {
     id: string;
+    name?: string;
     type: OrbitalBodyType;
     position: {
         radius: number;

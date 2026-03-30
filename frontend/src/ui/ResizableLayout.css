@@ -130,7 +130,6 @@
 }
 
 .bottom-panel {
-  height: 250px;
   flex-shrink: 0;
   background: var(--color-bg-secondary);
   border-top: 1px solid var(--color-border);
