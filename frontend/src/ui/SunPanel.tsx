@@ -3,7 +3,7 @@ import { TerminalPanel } from './terminal/TerminalPanel';
 import { TerminalSlider } from './terminal/TerminalSlider';
 import { TerminalSelect } from './terminal/TerminalSelect';
 import { useAudioEngine } from '../hooks/useAudioEngine';
-import { AudioParams } from '../types/audio';
+import { AudioParams, BasicOscillatorParams, FilterParams } from '../types/audio';
 import { freqToNote, midiToFreq, freqToMidi } from '../audio/audioUtils';
 
 // Available Root Modes
@@ -51,10 +51,31 @@ export const SunPanel: React.FC = () => {
         }
     }, [engine, isAudioActive]);
 
-    const handleParamChange = (key: keyof SunParameters, value: number | string | boolean) => {
-        const newParams = { ...params, [key]: value };
-        setParams(newParams);
-        engine.bodiesManager.updateBodyParams(SUN_ID, { [key]: value });
+    // Helper to get current oscillator params
+    const oscParams = () => (params.oscillator as any)?.params ?? {};
+
+    // Per-module update helpers that build properly nested updates
+    const updateOscParam = (key: keyof BasicOscillatorParams, value: any) => {
+        const updated: Partial<AudioParams> = { oscillator: { type: 'basic', params: { ...oscParams(), [key]: value } } };
+        setParams(prev => ({ ...prev, oscillator: updated.oscillator! }));
+        engine.bodiesManager.updateBodyParams(SUN_ID, updated);
+    };
+
+    const updateFilterParam = (key: keyof FilterParams, value: number) => {
+        const updated: Partial<AudioParams> = { filter: { ...params.filter, [key]: value } };
+        setParams(prev => ({ ...prev, filter: { ...prev.filter, ...updated.filter } }));
+        engine.bodiesManager.updateBodyParams(SUN_ID, updated);
+    };
+
+    const updateDistortion = (value: number) => {
+        const updated: Partial<AudioParams> = { distortion: { distortion: value } };
+        setParams(prev => ({ ...prev, distortion: updated.distortion }));
+        engine.bodiesManager.updateBodyParams(SUN_ID, updated);
+    };
+
+    const updateGain = (value: number) => {
+        setParams(prev => ({ ...prev, gainLevel: value }));
+        engine.bodiesManager.updateBodyParams(SUN_ID, { gainLevel: value });
     };
 
     // Special handler for Root Frequency to support modes
@@ -62,16 +83,16 @@ export const SunPanel: React.FC = () => {
         if (rootMode === 'NOTE') {
             // value comes in as MIDI index from the slider
             const freq = midiToFreq(Math.round(value));
-            handleParamChange('rootFrequency', freq);
+            updateOscParam('rootFrequency', freq);
         } else {
             // value is Hz
-            handleParamChange('rootFrequency', value);
+            updateOscParam('rootFrequency', value);
         }
     };
 
     // Calculate current MIDI value for the slider when in Note mode
     // We assume the stored param is always Hz
-    const currentMidi = freqToMidi(params.rootFrequency);
+    const currentMidi = freqToMidi((params.oscillator as any)?.params?.rootFrequency ?? 110);
 
     return (
         <div className="sun-panel-container pointer-events-auto">
@@ -99,21 +120,21 @@ export const SunPanel: React.FC = () => {
 
                     <TerminalSelect
                         label="WAVEFORM"
-                        value={params.waveform}
+                        value={(params.oscillator as any)?.params?.waveform ?? 'sine'}
                         options={[
                             { label: 'SINE', value: 'sine' },
                             { label: 'TRI', value: 'triangle' },
                             { label: 'SAW', value: 'sawtooth' },
                             { label: 'SQR', value: 'square' },
                         ]}
-                        onChange={(v) => handleParamChange('waveform', v)}
+                        onChange={(v) => updateOscParam('waveform', v as any)}
                     />
 
                     {/* ROOT Slider changes behavior based on Mode */}
                     {rootMode === 'HZ' ? (
                         <TerminalSlider
                             label="ROOT FREQ"
-                            value={params.rootFrequency}
+                            value={(params.oscillator as any)?.params?.rootFrequency ?? 110}
                             min={20}
                             max={880}
                             unit=" Hz"
@@ -137,54 +158,54 @@ export const SunPanel: React.FC = () => {
 
                     <TerminalSlider
                         label="CUTOFF"
-                        value={params.filterCutoff}
+                        value={params.filter?.filterCutoff ?? 1000}
                         min={20}
                         max={10000}
                         unit=" Hz"
                         logarithmic={true}
                         formatValue={(v) => `${Math.round(v)} Hz`}
-                        onChange={(v) => handleParamChange('filterCutoff', v)}
+                        onChange={(v) => updateFilterParam('filterCutoff', v)}
                     />
 
                     <TerminalSlider
                         label="SPREAD"
-                        value={params.detuneSpread}
+                        value={(params.oscillator as any)?.params?.detuneSpread ?? 10}
                         min={0}
                         max={50}
                         unit=" cts"
                         precision={1}
-                        onChange={(v) => handleParamChange('detuneSpread', v)}
+                        onChange={(v) => updateOscParam('detuneSpread', v)}
                     />
 
                     <TerminalSlider
                         label="LFO RATE"
-                        value={params.lfoRate}
+                        value={params.filter?.lfoRate ?? 0.5}
                         min={0.1}
                         max={20}
                         unit=" Hz"
                         precision={2}
                         logarithmic={true}
-                        onChange={(v) => handleParamChange('lfoRate', v)}
+                        onChange={(v) => updateFilterParam('lfoRate', v)}
                     />
 
                     <TerminalSlider
                         label="DISTORTION"
-                        value={params.distortion}
+                        value={params.distortion?.distortion ?? 0}
                         min={0}
                         max={100}
                         unit="%"
                         precision={0}
-                        onChange={(v) => handleParamChange('distortion', v)}
+                        onChange={(v) => updateDistortion(v)}
                     />
 
                     <TerminalSlider
                         label="GAIN"
-                        value={params.gainLevel}
+                        value={params.gainLevel ?? -12}
                         min={-60}
                         max={0}
                         unit=" dB"
                         precision={1}
-                        onChange={(v) => handleParamChange('gainLevel', v)}
+                        onChange={(v) => updateGain(v)}
                     />
 
                     {/* MIXER SECTION */}
@@ -196,22 +217,22 @@ export const SunPanel: React.FC = () => {
                             <div className="flex-1">
                                 <TerminalSlider
                                     label="SUB"
-                                    value={params.subVol || -12}
+                                    value={(params.oscillator as any)?.params?.subVol ?? -12}
                                     min={-60}
                                     max={0}
                                     unit=" dB"
                                     precision={0}
-                                    onChange={(v) => handleParamChange('subVol', v)}
+                                    onChange={(v) => updateOscParam('subVol', v)}
                                 />
                             </div>
                             <button
-                                className={`w-8 h-8 flex items-center justify-center border text-[10px] font-bold transition-all ${params.subEnabled !== false // default true
+                                className={`w-8 h-8 flex items-center justify-center border text-[10px] font-bold transition-all ${(params.oscillator as any)?.params?.subEnabled !== false // default true
                                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-dim)] text-[var(--color-primary)]'
                                     : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-secondary)]'
                                     }`}
-                                onClick={() => handleParamChange('subEnabled', params.subEnabled === false)}
+                                onClick={() => updateOscParam('subEnabled', (params.oscillator as any)?.params?.subEnabled === false)}
                             >
-                                {params.subEnabled !== false ? 'ON' : 'OFF'}
+                                {(params.oscillator as any)?.params?.subEnabled !== false ? 'ON' : 'OFF'}
                             </button>
                         </div>
 
@@ -220,22 +241,22 @@ export const SunPanel: React.FC = () => {
                             <div className="flex-1">
                                 <TerminalSlider
                                     label="NOISE"
-                                    value={params.noiseVol || -40}
+                                    value={(params.oscillator as any)?.params?.noiseVol ?? -40}
                                     min={-60}
                                     max={0}
                                     unit=" dB"
                                     precision={0}
-                                    onChange={(v) => handleParamChange('noiseVol', v)}
+                                    onChange={(v) => updateOscParam('noiseVol', v)}
                                 />
                             </div>
                             <button
-                                className={`w-8 h-8 flex items-center justify-center border text-[10px] font-bold transition-all ${params.noiseEnabled !== false // default true
+                                className={`w-8 h-8 flex items-center justify-center border text-[10px] font-bold transition-all ${(params.oscillator as any)?.params?.noiseEnabled !== false // default true
                                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-dim)] text-[var(--color-primary)]'
                                     : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-secondary)]'
                                     }`}
-                                onClick={() => handleParamChange('noiseEnabled', params.noiseEnabled === false)}
+                                onClick={() => updateOscParam('noiseEnabled', (params.oscillator as any)?.params?.noiseEnabled === false)}
                             >
-                                {params.noiseEnabled !== false ? 'ON' : 'OFF'}
+                                {(params.oscillator as any)?.params?.noiseEnabled !== false ? 'ON' : 'OFF'}
                             </button>
                         </div>
                     </div>
