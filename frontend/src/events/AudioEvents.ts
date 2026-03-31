@@ -1,5 +1,5 @@
 import { OrbitalBody } from '../types/orbital';
-import { SunParameters } from '../types/audio';
+import { AudioParams } from '../types/audio';
 
 export enum AudioEventType {
     BODY_ADDED = 'audio:body_added',
@@ -20,7 +20,7 @@ export interface BodyRemovedEvent {
 
 export interface ParamsChangedEvent {
     id: string;
-    params: Partial<SunParameters>;
+    params: Partial<AudioParams>;
 }
 
 export interface EngineInitializedEvent {

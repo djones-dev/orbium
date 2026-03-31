@@ -11,10 +11,13 @@ export const DEFAULT_PRESETS: Preset[] = [
         type: 'generator',
         category: 'planet',
         parameters: {
-            waveform: 'sine',
-            filterCutoff: 20000,
-            distortion: 0,
-            gainLevel: -6
+            oscillator: {
+                type: 'basic',
+                params: { waveform: 'sine' }
+            },
+            gainLevel: -6,
+            filter: { filterCutoff: 20000 },
+            distortion: { distortion: 0 }
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
@@ -27,10 +30,13 @@ export const DEFAULT_PRESETS: Preset[] = [
         type: 'generator',
         category: 'planet',
         parameters: {
-            waveform: 'sawtooth',
-            filterCutoff: 5000,
-            distortion: 10,
-            gainLevel: -12
+            oscillator: {
+                type: 'basic',
+                params: { waveform: 'sawtooth' }
+            },
+            gainLevel: -12,
+            filter: { filterCutoff: 5000 },
+            distortion: { distortion: 10 }
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
@@ -43,10 +49,13 @@ export const DEFAULT_PRESETS: Preset[] = [
         type: 'generator',
         category: 'planet',
         parameters: {
-            waveform: 'triangle',
-            filterCutoff: 8000,
-            distortion: 0,
-            gainLevel: -9
+            oscillator: {
+                type: 'basic',
+                params: { waveform: 'triangle' }
+            },
+            gainLevel: -9,
+            filter: { filterCutoff: 8000 },
+            distortion: { distortion: 0 }
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
@@ -60,10 +69,10 @@ export const DEFAULT_PRESETS: Preset[] = [
         type: 'modulator',
         category: 'moon',
         parameters: {
-            lfoRate: 0.5,
+            filter: { lfoRate: 0.5 },
             modType: 'lfo',
             modDepth: 30,
-            modTarget: 'filterCutoff'
+            modTarget: 'filter.lfoRate'
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
@@ -79,16 +88,18 @@ export const DEFAULT_PRESETS: Preset[] = [
             modType: 'adsr',
             modDepth: 80,
             modTarget: 'gainLevel',
-            attack: 0.05,
-            decay: 0.2,
-            sustain: 0.1,
-            release: 0.8
+            envelope: {
+                attack: 0.05,
+                decay: 0.2,
+                sustain: 0.1,
+                release: 0.8
+            }
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
         updated_at: new Date(now).toISOString()
     },
-    // Attributes
+    // Attributes (Effects)
     {
         id: 'attr-solar-flare',
         name: 'Solar Flare',
@@ -97,9 +108,11 @@ export const DEFAULT_PRESETS: Preset[] = [
         category: 'attribute',
         parameters: {
             effects: ['phaser'],
-            phaserRate: 0.8,
-            phaserDepth: 0.6,
-            phaserFeedback: 0.5
+            phaser: {
+                phaserRate: 0.8,
+                phaserDepth: 0.6,
+                phaserFeedback: 0.5
+            }
         },
         is_default: true,
         created_at: new Date(now).toISOString(),
@@ -113,8 +126,10 @@ export const DEFAULT_PRESETS: Preset[] = [
         category: 'attribute',
         parameters: {
             effects: ['reverb'],
-            reverbMix: 0.5,
-            reverbSize: 3.5
+            reverb: {
+                reverbMix: 0.5,
+                reverbSize: 3.5
+            }
         },
         is_default: true,
         created_at: new Date(now).toISOString(),

@@ -25,7 +25,7 @@ import { createPhenomenaComponent } from '../ecs/components/PhenomenaComponent';
 import { NoteEvent } from '../events/NoteEvents';
 import { cometModifier, pulsarModifier, lagrangeModifier } from '../ecs/systems/phenomena-modifiers';
 import { logger } from '../utils/logger';
-import { EffectType, SunParameters } from '../types/audio';
+import { EffectType, AudioParams } from '../types/audio';
 import { AudioEngine } from '../audio/AudioEngine';
 
 export class OrbitalBodiesManager {
@@ -116,7 +116,7 @@ export class OrbitalBodiesManager {
 
     async updateBodyParams(
         id: string,
-        params: Partial<SunParameters>,
+        params: Partial<AudioParams>,
         sync: boolean = true,
     ): Promise<void> {
         const em = World.getInstance().entities;
@@ -144,7 +144,7 @@ export class OrbitalBodiesManager {
                         sourceType: 'orbit',
                         modType,
                         targetEntityId: hierarchy.parentId,
-                        targetParam: target as keyof SunParameters,
+                        targetParam: target as string, // dot-path like "filter.filterCutoff"
                         depth: depth / 100,
                     }];
 
@@ -276,7 +276,7 @@ export class OrbitalBodiesManager {
                     sourceType: 'orbit',
                     modType: body.audioParams.modType ?? 'lfo',
                     targetEntityId: body.parentId,
-                    targetParam: body.audioParams.modTarget as keyof SunParameters,
+                    targetParam: body.audioParams.modTarget as string, // dot-path like "filter.filterCutoff"
                     depth: body.audioParams.modDepth / 100, // normalized 0-1
                 });
             } else if (body.presetType === 'modulator') {
@@ -285,7 +285,7 @@ export class OrbitalBodiesManager {
                     sourceType: 'orbit',
                     modType: 'lfo',
                     targetEntityId: body.parentId,
-                    targetParam: 'filterCutoff',
+                    targetParam: 'filter.filterCutoff', // dot-path
                     depth: 0.3,
                 });
             }

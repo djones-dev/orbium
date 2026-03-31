@@ -5,7 +5,7 @@ import { ModulationComponent } from '../components/ModulationComponent';
 import { AudioComponent } from '../components/AudioComponent';
 import { PositionComponent } from '../components/PositionComponent';
 import { World } from '../World';
-import { SunParameters } from '../../types/audio';
+import { AudioParams } from '../../types/audio';
 import { EventBus } from '../../events/EventBus';
 import { SimulationEventType, BodyTriggerFiredEvent } from '../../events/SimulationEvents';
 
@@ -98,8 +98,9 @@ export class ModulationSystem extends System {
         this.previousDirtyTargets = dirtyTargets;
     }
 
-    private updateADSR(mod: ModulationComponent, params: Partial<SunParameters>, now: number): number {
-        const { attack = 0.1, decay = 0.2, sustain = 0.5, release = 0.5 } = params;
+    private updateADSR(mod: ModulationComponent, params: Partial<AudioParams>, now: number): number {
+        const envelopeParams = params.envelope ?? { attack: 0.1, decay: 0.2, sustain: 0.5, release: 0.5 };
+        const { attack = 0.1, decay = 0.2, sustain = 0.5, release = 0.5 } = envelopeParams;
         const state = mod.adsrState;
         const elapsed = now - state.startTime;
 
@@ -139,28 +140,35 @@ export class ModulationSystem extends System {
         return state.value;
     }
 
-    private applyModulation(params: Partial<SunParameters>, targetParam: keyof SunParameters, amount: number): void {
-        const baseVal = (params as any)[targetParam];
+    private applyModulation(params: Partial<AudioParams>, targetPath: string, amount: number): void {
+        // targetPath can be dot-separated like "filter.filterCutoff" or just "gainLevel"
+        const parts = targetPath.split('.');
+        let obj: any = params;
+
+        // Navigate to the parent object
+        for (let i = 0; i < parts.length - 1; i++) {
+            if (!obj[parts[i]]) obj[parts[i]] = {};
+            obj = obj[parts[i]];
+        }
+
+        const key = parts[parts.length - 1];
+        const baseVal = obj[key];
         if (typeof baseVal !== 'number') return;
 
-        switch (targetParam) {
-            case 'filterCutoff':
-                // Modulate cutoff frequency exponentially (up to 4 octaves)
-                (params as any)[targetParam] = baseVal * Math.pow(2, amount * 4);
-                (params as any)[targetParam] = Math.max(20, Math.min(20000, (params as any)[targetParam]));
-                break;
-            case 'rootFrequency':
-                // Modulate root frequency exponentially (up to 2 octaves)
-                (params as any)[targetParam] = baseVal * Math.pow(2, amount * 2);
-                break;
-            case 'gainLevel':
-                // Modulate gain (+/- 24dB)
-                (params as any)[targetParam] = baseVal + amount * 24;
-                break;
-            default:
-                // Linear modulation 50% depth for others
-                (params as any)[targetParam] = baseVal + amount * (baseVal * 0.5);
-                break;
+        // Apply modulation based on the parameter type
+        if (targetPath.includes('filterCutoff')) {
+            // Exponential for frequency (up to 4 octaves)
+            obj[key] = baseVal * Math.pow(2, amount * 4);
+            obj[key] = Math.max(20, Math.min(20000, obj[key]));
+        } else if (targetPath.includes('rootFrequency')) {
+            // Exponential for frequency (up to 2 octaves)
+            obj[key] = baseVal * Math.pow(2, amount * 2);
+        } else if (targetPath.includes('gainLevel')) {
+            // Linear for gain (+/- 24dB)
+            obj[key] = baseVal + amount * 24;
+        } else {
+            // Linear for others (50% depth)
+            obj[key] = baseVal + amount * (baseVal * 0.5);
         }
     }
 }

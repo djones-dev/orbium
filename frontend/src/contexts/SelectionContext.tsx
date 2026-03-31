@@ -7,7 +7,7 @@ import { PresetComponent } from '../ecs/components/PresetComponent';
 import { AudioEventType } from '../events/AudioEvents';
 import { EventBus } from '../events/EventBus';
 
-import { SunParameters } from '../types/audio';
+import { AudioParams } from '../types/audio';
 import { PhysicsSystem } from '../simulation/PhysicsSystem';
 import { VelocityComponent } from '../ecs/components/VelocityComponent';
 import { MetadataComponent } from '../ecs/components/MetadataComponent';
@@ -19,7 +19,7 @@ interface SelectedBodyInfo {
     type: string;
     position: { radius: number; angle: number };
     velocity: number;
-    audioParams: Partial<SunParameters>;
+    audioParams: Partial<AudioParams>;
     visualConfig: {
         color: string;
         size: number;

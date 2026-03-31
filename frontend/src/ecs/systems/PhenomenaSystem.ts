@@ -39,10 +39,16 @@ export class PhenomenaSystem extends System {
             return;
         }
 
+        // Extract rootFrequency from nested oscillator config
+        const oscConfig = audio.parameters.oscillator;
+        const rootFrequency = oscConfig && 'params' in oscConfig
+            ? (oscConfig.params as any).rootFrequency ?? 440
+            : 440;
+
         let noteEvent: NoteEvent | null = {
             id: uuidv4(),
             planetId: id,
-            pitch: audio.parameters.rootFrequency ?? 440,
+            pitch: rootFrequency,
             velocity: 1.0, // placeholder
             timestamp,
             position: { radius: position.radius, angle },
