@@ -13,7 +13,7 @@
  */
 
 import { AudioEngine } from '../../AudioEngine';
-import { SunParameters } from '../../../types/audio';
+import { AudioParams } from '../../../types/audio';
 
 // Mock AudioContext if not available in test environment
 const mockAudioContext = () => {
