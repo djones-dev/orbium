@@ -3,7 +3,7 @@ import { TerminalPanel } from './terminal/TerminalPanel';
 import { TerminalSlider } from './terminal/TerminalSlider';
 import { TerminalSelect } from './terminal/TerminalSelect';
 import { useAudioEngine } from '../hooks/useAudioEngine';
-import { SunParameters } from '../types/audio';
+import { AudioParams } from '../types/audio';
 import { freqToNote, midiToFreq, freqToMidi } from '../audio/audioUtils';
 
 // Available Root Modes
@@ -14,19 +14,30 @@ export const SunPanel: React.FC = () => {
     const SUN_ID = 'sun-primary';
 
     // Initial State must match AudioEngine default
-    const [params, setParams] = useState<SunParameters>({
-        rootFrequency: 110,
-        filterCutoff: 1000,
-        detuneSpread: 10,
-        lfoRate: 0.5,
+    const [params, setParams] = useState<AudioParams>({
+        oscillator: {
+            type: 'basic',
+            params: {
+                rootFrequency: 110,
+                detuneSpread: 10,
+                waveform: 'sine',
+                subVol: -12,
+                subEnabled: true,
+                noiseVol: -40,
+                noiseEnabled: true,
+            }
+        },
         gainLevel: -12,
-        waveform: 'sine',
-        distortion: 0,
-        noiseVol: -40,
-        subVol: -12,
-        noiseEnabled: true,
-        subEnabled: true,
-        filterResonance: 1.0,
+        filter: {
+            filterCutoff: 1000,
+            filterResonance: 1.0,
+            lfoRate: 0.5,
+        },
+        distortion: { distortion: 0 },
+        reverb: { reverbMix: 0.3, reverbSize: 2.0 },
+        phaser: { phaserRate: 0.5, phaserDepth: 0.5, phaserFeedback: 0.4 },
+        envelope: { attack: 0.01, decay: 0.5, sustain: 0.1, release: 1.0 },
+        effects: [],
     });
 
     // UI State

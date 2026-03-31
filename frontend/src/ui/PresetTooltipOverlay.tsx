@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useUIStore } from '../stores/uiStore';
 import { PresetCategory } from '../types/preset';
-import { SunParameters } from '../types/audio';
+import { AudioParams } from '../types/audio';
 import './PresetTooltipOverlay.css';
 
 export const PresetTooltipOverlay: React.FC = () => {
@@ -38,22 +38,28 @@ export const PresetTooltipOverlay: React.FC = () => {
         }
     };
 
-    const getParamSummary = (params: Partial<SunParameters>) => {
+    const getParamSummary = (params: Partial<AudioParams>) => {
         const summary: string[] = [];
-        if (params.waveform) {
-            summary.push(`${params.waveform.charAt(0).toUpperCase() + params.waveform.slice(1)} wave`);
+
+        const oscConfig = (params as any)?.oscillator;
+        const oscParams = oscConfig?.params;
+        const filterParams = (params as any)?.filter;
+        const distortionParams = (params as any)?.distortion;
+
+        if (oscParams?.waveform) {
+            summary.push(`${oscParams.waveform.charAt(0).toUpperCase() + oscParams.waveform.slice(1)} wave`);
         }
-        if (params.rootFrequency) {
-            summary.push(`${params.rootFrequency}Hz`);
+        if (oscParams?.rootFrequency) {
+            summary.push(`${oscParams.rootFrequency}Hz`);
         }
-        if (params.distortion !== undefined) {
-            if (params.distortion === 0) summary.push('clean');
-            else if (params.distortion < 20) summary.push('mild drive');
-            else if (params.distortion < 60) summary.push('saturated');
+        if (distortionParams?.distortion !== undefined) {
+            if (distortionParams.distortion === 0) summary.push('clean');
+            else if (distortionParams.distortion < 20) summary.push('mild drive');
+            else if (distortionParams.distortion < 60) summary.push('saturated');
             else summary.push('crushed');
         }
-        if (params.filterCutoff) {
-            summary.push(`F:${Math.round(params.filterCutoff)}Hz`);
+        if (filterParams?.filterCutoff) {
+            summary.push(`F:${Math.round(filterParams.filterCutoff)}Hz`);
         }
         return summary.length > 0 ? summary.join(', ') : 'Default parameters';
     };

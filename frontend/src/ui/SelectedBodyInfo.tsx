@@ -65,7 +65,7 @@ export const SelectedBodyInfo: React.FC = () => {
                         {audioParams.gainLevel && audioParams.gainLevel > -60 ? "TRANSMITTING" : "SILENT"}
                     </span>
                     <span className="text-[var(--color-text-muted)]">WAVEFORM:</span>
-                    <span className="text-white uppercase">{audioParams.waveform || 'N/A'}</span>
+                    <span className="text-white uppercase">{(audioParams.oscillator as any)?.params?.waveform || 'N/A'}</span>
                 </div>
             </div>
         </div>

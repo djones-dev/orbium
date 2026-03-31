@@ -7,7 +7,7 @@ import planetVertexShader from './shaders/planet.vert?raw';
 import planetFragmentShader from './shaders/planet.frag?raw';
 import moonVertexShader from './shaders/moon.vert?raw';
 import moonFragmentShader from './shaders/moon.frag?raw';
-import { SunParameters } from '../types/audio';
+import { AudioParams } from '../types/audio';
 import { useSelection } from '../contexts/SelectionContext';
 import { World } from '../ecs/World';
 import { ComponentType } from '../ecs/components/Component';
@@ -153,20 +153,26 @@ export const Sun = React.memo(({ id }: { id: string }) => {
         const audio = world.entities.getComponent<AudioComponent>(id, ComponentType.Audio);
         if (!audio || !materialRef.current) return;
 
-        const params: SunParameters = {
-            rootFrequency: 60,
-            filterCutoff: 5000,
-            filterResonance: 1.0,
-            detuneSpread: 10,
-            lfoRate: 0.5,
-            distortion: 0,
-            gainLevel: -6,
-            waveform: 'sine',
-            noiseEnabled: false,
-            noiseVol: -20,
-            subEnabled: true,
-            subVol: -10,
-            ...audio.parameters,
+        // Extract flat values from nested AudioParams for shader uniforms
+        const audioParams = audio.parameters as Partial<AudioParams>;
+        const oscConfig = (audioParams.oscillator as any) ?? { type: 'basic', params: {} };
+        const oscParams = oscConfig.params ?? {};
+        const filterParams = audioParams.filter ?? {};
+        const distortionParams = audioParams.distortion ?? {};
+
+        const params = {
+            rootFrequency: oscParams.rootFrequency ?? 60,
+            filterCutoff: filterParams.filterCutoff ?? 5000,
+            filterResonance: filterParams.filterResonance ?? 1.0,
+            detuneSpread: oscParams.detuneSpread ?? 10,
+            lfoRate: filterParams.lfoRate ?? 0.5,
+            distortion: distortionParams.distortion ?? 0,
+            gainLevel: audioParams.gainLevel ?? -6,
+            waveform: oscParams.waveform ?? 'sine',
+            noiseEnabled: oscParams.noiseEnabled ?? false,
+            noiseVol: oscParams.noiseVol ?? -20,
+            subEnabled: oscParams.subEnabled ?? true,
+            subVol: oscParams.subVol ?? -10,
         };
 
         const distortionFactor = (params.distortion ?? 0) / 100;

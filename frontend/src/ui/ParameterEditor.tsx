@@ -6,7 +6,7 @@ import { useUIStore } from '../stores/uiStore';
 import { TerminalKnob } from './terminal/TerminalKnob';
 import { TerminalSelect } from './terminal/TerminalSelect';
 import { TerminalToggle } from './terminal/TerminalToggle';
-import { SunParameters } from '../types/audio';
+import { AudioParams } from '../types/audio';
 import { freqToNote, midiToFreq, freqToMidi } from '../audio/audioUtils';
 import { logger } from '../utils/logger';
 
@@ -26,7 +26,7 @@ export const ParameterEditor: React.FC = () => {
     const setPickingTarget = useUIStore(state => state.setPickingModulationTarget);
 
     const [saveStatus, setSaveStatus] = useState<'IDLE' | 'EDITING' | 'SAVING' | 'SAVED' | 'ERROR'>('IDLE');
-    const pendingChangesRef = useRef<Partial<SunParameters>>({});
+    const pendingChangesRef = useRef<Partial<AudioParams>>({});
 
     const [localName, setLocalName] = useState(selectedBody?.name || '');
 
@@ -110,13 +110,30 @@ export const ParameterEditor: React.FC = () => {
     const hasPhaser = audioParams.effects?.includes('phaser');
     const hasReverb = audioParams.effects?.includes('reverb');
 
-    const getParam = (key: keyof SunParameters, def: number) => {
-        const val = audioParams[key];
-        return typeof val === 'number' ? val : def;
+    const getParam = (key: string, def: number) => {
+        // Handle nested paths like "filter.filterCutoff" and flat keys like "gainLevel"
+        if (key === 'rootFrequency') {
+            return (audioParams.oscillator as any)?.params?.rootFrequency ?? def;
+        } else if (key === 'detuneSpread' || key === 'waveform' || key === 'subVol' || key === 'subEnabled' || key === 'noiseVol' || key === 'noiseEnabled') {
+            return (audioParams.oscillator as any)?.params?.[key] ?? def;
+        } else if (key === 'filterCutoff' || key === 'filterResonance' || key === 'lfoRate') {
+            return (audioParams.filter as any)?.[key] ?? def;
+        } else if (key === 'distortion') {
+            return (audioParams.distortion as any)?.distortion ?? def;
+        } else if (key === 'reverbMix' || key === 'reverbSize') {
+            return (audioParams.reverb as any)?.[key] ?? def;
+        } else if (key === 'phaserRate' || key === 'phaserDepth' || key === 'phaserFeedback') {
+            return (audioParams.phaser as any)?.[key] ?? def;
+        } else if (key === 'gainLevel') {
+            return audioParams.gainLevel ?? def;
+        }
+        return def;
     }
-    const getStringParam = (key: keyof SunParameters, def: string) => {
-        const val = audioParams[key] as string;
-        return val || def;
+    const getStringParam = (key: string, def: string) => {
+        if (key === 'waveform') {
+            return (audioParams.oscillator as any)?.params?.waveform ?? def;
+        }
+        return def;
     }
 
     // --- Renderer ---
@@ -252,7 +269,7 @@ export const ParameterEditor: React.FC = () => {
                             />
                             <TerminalToggle
                                 label="SUB OSC"
-                                checked={!!audioParams.subEnabled}
+                                checked={!!(audioParams.oscillator as any)?.params?.subEnabled}
                                 onChange={(v) => { onParamChange('subEnabled', v); onParamCommit(); }}
                             />
                         </div>
