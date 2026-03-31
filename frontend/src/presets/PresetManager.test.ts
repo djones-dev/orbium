@@ -42,7 +42,7 @@ export async function verifyPresetManager() {
         description: 'Testing persistence',
         type: 'generator',
         category: 'sun',
-        parameters: { rootFrequency: 440 },
+        parameters: { oscillator: { type: 'basic', params: { rootFrequency: 440 } } },
         is_default: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

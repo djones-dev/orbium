@@ -72,13 +72,51 @@ export const ParameterEditor: React.FC = () => {
         }
     };
 
-    const onParamChange = useCallback((key: keyof SunParameters, value: any) => {
+    // Helper to merge nested AudioParams updates without clobbering sibling params
+    const mergeAudioParams = (base: Partial<AudioParams>, patch: Partial<AudioParams>): Partial<AudioParams> => {
+        const result: Partial<AudioParams> = { ...base, ...patch };
+        if (base.oscillator && patch.oscillator && 'params' in patch.oscillator) {
+            result.oscillator = {
+                ...(patch.oscillator as any),
+                params: { ...(base.oscillator as any).params, ...(patch.oscillator as any).params }
+            } as any;
+        }
+        if (base.filter && patch.filter) result.filter = { ...base.filter, ...patch.filter };
+        if (base.distortion && patch.distortion) result.distortion = { ...base.distortion, ...patch.distortion };
+        if (base.reverb && patch.reverb) result.reverb = { ...base.reverb, ...patch.reverb };
+        if (base.phaser && patch.phaser) result.phaser = { ...base.phaser, ...patch.phaser };
+        if (base.envelope && patch.envelope) result.envelope = { ...base.envelope, ...patch.envelope };
+        return result;
+    };
+
+    // Maps a flat parameter key to its correct nested location in AudioParams
+    const buildNestedUpdate = useCallback((key: string, value: any): Partial<AudioParams> => {
+        const oscKeys = ['rootFrequency', 'detuneSpread', 'waveform', 'subVol', 'subEnabled', 'noiseVol', 'noiseEnabled'];
+        const filterKeys = ['filterCutoff', 'filterResonance', 'lfoRate'];
+        const reverbKeys = ['reverbMix', 'reverbSize'];
+        const phaserKeys = ['phaserRate', 'phaserDepth', 'phaserFeedback'];
+        const envelopeKeys = ['attack', 'decay', 'sustain', 'release'];
+
+        if (oscKeys.includes(key)) {
+            const currentOscParams = (selectedBody?.audioParams.oscillator as any)?.params ?? {};
+            return { oscillator: { type: 'basic', params: { ...currentOscParams, [key]: value } } };
+        }
+        if (filterKeys.includes(key)) return { filter: { [key]: value } };
+        if (key === 'distortion') return { distortion: { distortion: value } };
+        if (reverbKeys.includes(key)) return { reverb: { [key]: value } };
+        if (phaserKeys.includes(key)) return { phaser: { [key]: value } };
+        if (envelopeKeys.includes(key)) return { envelope: { [key]: value } };
+        // top-level keys: gainLevel, modType, modDepth, modTarget, effects
+        return { [key]: value } as Partial<AudioParams>;
+    }, [selectedBody]);
+
+    const onParamChange = useCallback((key: string, value: any) => {
         if (!selectedBody) return;
         setSaveStatus('EDITING');
-        // Update local audio immediately
-        pendingChangesRef.current = { ...pendingChangesRef.current, [key]: value };
-        manager.updateBodyParams(selectedBody.id, { [key]: value }, false);
-    }, [selectedBody, manager]);
+        const nested = buildNestedUpdate(key, value);
+        pendingChangesRef.current = mergeAudioParams(pendingChangesRef.current, nested);
+        manager.updateBodyParams(selectedBody.id, nested, false);
+    }, [selectedBody, manager, buildNestedUpdate]);
 
     const handlePickParameter = (key: string) => {
         if (pickingTargetForId) {

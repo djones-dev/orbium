@@ -35,14 +35,14 @@ export async function runSunLayerTests() {
         // Low Cutoff
         const bufferSawLow = await renderOffline((context) => {
             const layer = new SunLayer(context as unknown as AudioContext);
-            layer.updateParams({ filterCutoff: 100, waveform: 'sawtooth' });
+            layer.updateParams({ filter: { filterCutoff: 100 }, oscillator: { type: 'basic', params: { waveform: 'sawtooth' } } });
             layer.connect(context.destination);
         }, dur);
 
         // High Cutoff
         const bufferSawHigh = await renderOffline((context) => {
             const layer = new SunLayer(context as unknown as AudioContext);
-            layer.updateParams({ filterCutoff: 5000, waveform: 'sawtooth' });
+            layer.updateParams({ filter: { filterCutoff: 5000 }, oscillator: { type: 'basic', params: { waveform: 'sawtooth' } } });
             layer.connect(context.destination);
         }, dur);
 
