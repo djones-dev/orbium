@@ -1,38 +1,26 @@
 import { AudioLayer, AudioParams } from '../../types/audio';
 import { OscillatorBank } from '@/audio/sources/OscillatorBank';
-import { NoiseSource } from '@/audio/sources/NoiseSource';
-import { DistortionEffect } from '@/audio/effects/DistortionEffect';
 import { FilterEffect } from '@/audio/effects/FilterEffect';
-import { ReverbEffect } from '@/audio/effects/ReverbEffect';
-import { PhaserEffect } from '@/audio/effects/PhaserEffect';
 
 /**
- * SunLayer — Modular Synthesis Architecture
+ * PlanetLayer — Lightweight Synthesis
  *
  * Signal Flow:
- * [OscillatorBank] ──┐
- * [NoiseSource] ─────┴─► mergeGain ─► DistortionEffect ─► FilterEffect ─► splitGain
- *                                                                               ├─► ReverbEffect ──┐
- *                                                                               └─► PhaserEffect ──┴─► outputGain ─► analyser
+ * [OscillatorBank] ─► FilterEffect ─► outputGain ─► analyser
  *
- * Each effect module is composable and manages its own internal state.
+ * Planets use a minimal signal chain without reverb, phaser, or distortion by default.
+ * Additional effects can be driven via EffectComponent in the ECS.
  */
-export class SunLayer implements AudioLayer {
+export class PlanetLayer implements AudioLayer {
   readonly id: string;
-  readonly type = 'sun';
+  readonly type = 'planet';
   readonly analyser: AnalyserNode;
 
   private context: AudioContext;
   private outputGain: GainNode;
-  private mergeGain: GainNode;
-  private splitGain: GainNode;
 
   private oscillatorBank: OscillatorBank;
-  private noiseSource: NoiseSource;
-  private distortion: DistortionEffect;
   private filter: FilterEffect;
-  private reverb: ReverbEffect;
-  private phaser: PhaserEffect;
 
   private params: AudioParams = {
     oscillator: {
@@ -63,7 +51,6 @@ export class SunLayer implements AudioLayer {
   constructor(context: AudioContext, id: string = crypto.randomUUID()) {
     this.context = context;
     this.id = id;
-    const isSun = id === 'sun-primary';
 
     // Create analyser
     this.analyser = context.createAnalyser();
@@ -73,43 +60,20 @@ export class SunLayer implements AudioLayer {
     this.outputGain = context.createGain();
     this.outputGain.connect(this.analyser);
 
-    // Create merge and split gains for effect routing
-    this.mergeGain = context.createGain();
-    this.splitGain = context.createGain();
-
-    // Create all composable modules
-    this.oscillatorBank = new OscillatorBank(context, isSun);
-    this.noiseSource = new NoiseSource(context, true);
-    this.distortion = new DistortionEffect(context);
+    // Create modules
+    this.oscillatorBank = new OscillatorBank(context, false);
     this.filter = new FilterEffect(context);
-    this.reverb = new ReverbEffect(context);
-    this.phaser = new PhaserEffect(context);
 
-    // Wire the signal chain:
-    // OscillatorBank + NoiseSource → mergeGain → distortion → filter → splitGain
-    this.oscillatorBank.output.connect(this.mergeGain);
-    this.noiseSource.output.connect(this.mergeGain);
-
-    this.mergeGain.connect(this.distortion.input);
-    this.distortion.output.connect(this.filter.input);
-    this.filter.output.connect(this.splitGain);
-
-    // Reverb and Phaser both take input from splitGain and output to outputGain
-    this.splitGain.connect(this.reverb.input);
-    this.reverb.output.connect(this.outputGain);
-
-    this.splitGain.connect(this.phaser.input);
-    this.phaser.output.connect(this.outputGain);
-
-    // Also connect dry path directly to outputGain (after effects)
-    this.splitGain.connect(this.outputGain);
+    // Wire the simple signal chain:
+    // OscillatorBank → FilterEffect → outputGain → analyser
+    this.oscillatorBank.output.connect(this.filter.input);
+    this.filter.output.connect(this.outputGain);
 
     // Apply initial params
     this.updateParams(this.params);
   }
 
   updateParams(newParams: Partial<AudioParams>): void {
-    // Merge the nested AudioParams structure carefully
     this.params = {
       ...this.params,
       ...newParams,
@@ -121,13 +85,9 @@ export class SunLayer implements AudioLayer {
       envelope: newParams.envelope ? { ...this.params.envelope, ...newParams.envelope } : this.params.envelope,
     };
 
-    // Delegate to individual modules
+    // Delegate to modules
     this.oscillatorBank.updateParams(this.params);
-    this.noiseSource.updateParams(this.params);
-    this.distortion.updateParams(this.params);
     this.filter.updateParams(this.params);
-    this.reverb.updateParams(this.params);
-    this.phaser.updateParams(this.params);
 
     // Handle output gain
     const { gainLevel } = this.params;
@@ -157,13 +117,7 @@ export class SunLayer implements AudioLayer {
 
   dispose(): void {
     this.oscillatorBank.dispose();
-    this.noiseSource.dispose();
-    this.distortion.dispose();
     this.filter.dispose();
-    this.reverb.dispose();
-    this.phaser.dispose();
-    this.mergeGain.disconnect();
-    this.splitGain.disconnect();
     this.outputGain.disconnect();
     this.analyser.disconnect();
   }

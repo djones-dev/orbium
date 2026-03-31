@@ -46,6 +46,7 @@ export const PresetBrowser: React.FC = () => {
         { label: 'PLANETS', value: 'planet', icon: '○' },
         { label: 'MOONS', value: 'moon', icon: '☾' },
         { label: 'ATTR', value: 'attribute', icon: '◆' },
+        { label: 'PHENOM', value: 'phenomenon', icon: '✶' },
     ];
 
     const sortFields: { label: string; value: SortField }[] = [

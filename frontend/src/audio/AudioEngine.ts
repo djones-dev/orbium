@@ -1,4 +1,4 @@
-import { SunParameters, AudioLayer } from '../types/audio';
+import { AudioParams, AudioLayer } from '../types/audio';
 import { OrbitalBodiesManager } from '../simulation/OrbitalBodiesManager';
 import { PresetManager } from '../presets/PresetManager';
 import { OrbitalBody } from '../types/orbital';
@@ -10,6 +10,7 @@ import {
     BodyRemovedEvent,
     ParamsChangedEvent,
 } from '../events/AudioEvents';
+import { NoteEvent, NoteEventType } from '../events/NoteEvents';
 import { MasterChain } from './MasterChain';
 import { WorkletManager } from './WorkletManager';
 import { LayerFactory } from './layers/LayerFactory';
@@ -62,6 +63,14 @@ export class AudioEngine {
             }),
             this.bus.on<ParamsChangedEvent>(AudioEventType.PARAMS_CHANGED, ({ id, params }) => {
                 this.handleParamsChanged(id, params);
+            }),
+            this.bus.on<NoteEvent>(NoteEventType.MODIFIED_NOTE_EVENT, (noteEvent) => {
+                if (!this.context) return;
+                const layer = this.layers.get(noteEvent.planetId);
+                if (layer?.trigger) {
+                    // Here you could use more info from noteEvent, e.g. pitch, velocity
+                    layer.trigger(this.context.currentTime);
+                }
             }),
         );
     }
@@ -143,8 +152,8 @@ export class AudioEngine {
         if (!this.context || !this.masterChain) return;
         if (body.type === 'sun') return;
         
-        // Modulators (moons) don't have their own sound
-        if (body.type === 'moon') return;
+        // Modulators (moons) and phenomena don't have their own sound
+        if (body.type === 'moon' || body.type === 'phenomenon') return;
         
         if (this.layers.has(body.id)) return;
 
@@ -169,7 +178,7 @@ export class AudioEngine {
         }
     }
 
-    private handleParamsChanged(id: string, params: Partial<SunParameters>): void {
+    private handleParamsChanged(id: string, params: Partial<AudioParams>): void {
         if (id === 'sun-primary') {
             this.sunLayer?.updateParams(params);
             return;
@@ -207,11 +216,11 @@ export class AudioEngine {
         await this.bodiesManager.resetScene();
     }
 
-    public updateSunParams(params: Partial<SunParameters>): void {
+    public updateSunParams(params: Partial<AudioParams>): void {
         this.sunLayer?.updateParams(params);
     }
 
-    public getSunParams(): SunParameters | null {
+    public getSunParams(): AudioParams | null {
         return this.sunLayer ? this.sunLayer.getParams() : null;
     }
 

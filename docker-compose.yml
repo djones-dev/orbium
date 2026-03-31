@@ -28,7 +28,7 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - BACKEND_ENV=${BACKEND_ENV:-development}
     depends_on:
       db:

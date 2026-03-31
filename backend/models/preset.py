@@ -6,8 +6,8 @@ from uuid import UUID
 class PresetBase(BaseModel):
     name: str
     description: str
-    type: Literal['generator', 'effect', 'modulator']
-    category: Literal['planet', 'moon', 'attribute', 'sun']
+    type: Literal['generator', 'effect', 'modulator', 'phenomenon']
+    category: Literal['planet', 'moon', 'attribute', 'sun', 'phenomenon']
     parameters: Dict[str, Any]
 
 class PresetCreate(PresetBase):
@@ -16,8 +16,8 @@ class PresetCreate(PresetBase):
 class PresetUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    type: Optional[Literal['generator', 'effect', 'modulator']] = None
-    category: Optional[Literal['planet', 'moon', 'attribute', 'sun']] = None
+    type: Optional[Literal['generator', 'effect', 'modulator', 'phenomenon']] = None
+    category: Optional[Literal['planet', 'moon', 'attribute', 'sun', 'phenomenon']] = None
     parameters: Optional[Dict[str, Any]] = None
 
 class PresetResponse(PresetBase):

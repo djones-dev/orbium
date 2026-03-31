@@ -6,6 +6,7 @@ import { CollisionSystem } from './systems/CollisionSystem';
 import { ModulationSystem } from './systems/ModulationSystem';
 import { AudioSystem } from './systems/AudioSystem';
 import { RenderSystem } from './systems/RenderSystem';
+import { PhenomenaSystem } from './systems/PhenomenaSystem';
 
 /**
  * World — the root ECS container.
@@ -26,6 +27,7 @@ export class World {
     readonly modulation: ModulationSystem;
     readonly audio: AudioSystem;
     readonly render: RenderSystem;
+    readonly phenomena: PhenomenaSystem;
 
     private systems: System[];
 
@@ -37,8 +39,9 @@ export class World {
         this.modulation = new ModulationSystem();
         this.audio = new AudioSystem();
         this.render = new RenderSystem();
+        this.phenomena = new PhenomenaSystem();
 
-        this.systems = [this.hierarchy, this.movement, this.collision, this.modulation, this.audio, this.render];
+        this.systems = [this.hierarchy, this.movement, this.collision, this.modulation, this.phenomena, this.audio, this.render];
         // Systems are already in priority order; sort defensively for future additions.
         this.systems.sort((a, b) => a.priority - b.priority);
     }

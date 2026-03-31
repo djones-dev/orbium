@@ -1,7 +1,7 @@
-import { SunParameters } from './audio';
+import { AudioParams } from './audio';
 import { PresetType } from './preset';
 
-export type OrbitalBodyType = 'sun' | 'planet' | 'moon';
+export type OrbitalBodyType = 'sun' | 'planet' | 'moon' | 'phenomenon';
 
 export interface OrbitalBody {
     id: string;
@@ -12,7 +12,7 @@ export interface OrbitalBody {
         angle: number;
     };
     velocity: number; // Angular velocity
-    audioParams: Partial<SunParameters>;
+    audioParams: Partial<AudioParams>;
     audioLayerId: string;
     visualConfig: {
         color: string;

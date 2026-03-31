@@ -2,8 +2,10 @@ import { System } from './System';
 import { EntityManager } from '../EntityManager';
 import { ComponentType } from '../components/Component';
 import { AudioComponent } from '../components/AudioComponent';
+import { EffectComponent } from '../components/EffectComponent';
 import { EventBus } from '../../events/EventBus';
 import { AudioEventType, ParamsChangedEvent } from '../../events/AudioEvents';
+import { AudioParams } from '../../types/audio';
 
 /**
  * AudioSystem — flushes dirty AudioComponent changes to the EventBus so
@@ -36,17 +38,59 @@ export class AudioSystem extends System {
             if (!entityManager.hasEntity(id)) continue;
             const audio = entityManager.getComponent<AudioComponent>(id, ComponentType.Audio);
             if (audio) {
+                // Merge EffectComponent params into AudioComponent.parameters
+                const mergedParams = { ...audio.parameters };
+                const effect = entityManager.getComponent<EffectComponent>(id, ComponentType.Effect);
+                if (effect) {
+                    for (const effectInst of effect.effects) {
+                        Object.assign(mergedParams, mapEffectToParams(effectInst));
+                    }
+                }
+
                 // Check if parameters actually changed since last emission
-                const paramStr = JSON.stringify(audio.parameters);
+                const paramStr = JSON.stringify(mergedParams);
                 if (this.lastEmittedParams.get(id) === paramStr) continue;
 
                 this.bus.emit<ParamsChangedEvent>(AudioEventType.PARAMS_CHANGED, {
                     id,
-                    params: audio.parameters,
+                    params: mergedParams,
                 });
                 this.lastEmittedParams.set(id, paramStr);
             }
         }
         this.dirty.clear();
+    }
+}
+
+/**
+ * Maps an EffectInstance to partial AudioParams that drive the audio DSP.
+ */
+function mapEffectToParams(
+    effectInst: EffectComponent['effects'][number]
+): Partial<AudioParams> {
+    const { type, intensity } = effectInst;
+    switch (type) {
+        case 'reverb':
+            return {
+                reverb: { reverbMix: intensity },
+                effects: ['reverb'],
+            };
+        case 'phaser':
+            return {
+                phaser: { phaserDepth: intensity },
+                effects: ['phaser'],
+            };
+        case 'distortion':
+            return {
+                distortion: { distortion: intensity * 100 },
+                effects: ['distortion'],
+            };
+        case 'atmosphere':
+            return {
+                reverb: { reverbMix: intensity * 0.5, reverbSize: 3.0 },
+                effects: ['reverb'],
+            };
+        default:
+            return {};
     }
 }

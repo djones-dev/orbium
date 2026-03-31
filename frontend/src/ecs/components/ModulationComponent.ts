@@ -1,12 +1,12 @@
 import { Component, ComponentType } from './Component';
-import { SunParameters, ModulatorType } from '../../types/audio';
+import { ModulatorType } from '../../types/audio';
 
 export interface ModulationRoute {
     sourceType: 'parameter' | 'orbit';
     modType: ModulatorType;
-    sourceParam?: keyof SunParameters;
+    sourceParam?: string; // dot-path like "filter.filterCutoff"
     targetEntityId: string;
-    targetParam: keyof SunParameters;
+    targetParam: string;  // dot-path like "oscillator.rootFrequency"
     depth: number; // 0–1 mix
 }
 

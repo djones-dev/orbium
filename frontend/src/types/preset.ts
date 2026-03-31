@@ -1,7 +1,7 @@
-import { SunParameters } from './audio';
+import { AudioParams } from './audio';
 
-export type PresetType = 'generator' | 'effect' | 'modulator';
-export type PresetCategory = 'planet' | 'moon' | 'attribute' | 'sun';
+export type PresetType = 'generator' | 'effect' | 'modulator' | 'phenomenon';
+export type PresetCategory = 'planet' | 'moon' | 'attribute' | 'sun' | 'phenomenon';
 
 export interface Preset {
     id: string;
@@ -9,7 +9,7 @@ export interface Preset {
     description: string;
     type: PresetType;
     category: PresetCategory;
-    parameters: Partial<SunParameters>;
+    parameters: Partial<AudioParams>;
     is_default: boolean;
     created_at: string;
     updated_at: string;

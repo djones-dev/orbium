@@ -10,6 +10,7 @@ export enum ComponentType {
     Effect = 'effect',
     Collider = 'collider',
     Metadata = 'metadata',
+    Phenomena = 'phenomena',
 }
 
 /** Marker interface — all components carry their discriminant type. */

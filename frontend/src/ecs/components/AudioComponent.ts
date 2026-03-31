@@ -1,16 +1,16 @@
 import { Component, ComponentType } from './Component';
-import { SunParameters } from '../../types/audio';
+import { AudioParams } from '../../types/audio';
 
 export interface AudioComponent extends Component {
     readonly type: ComponentType.Audio;
     layerId: string;
-    baseParameters: Partial<SunParameters>;
-    parameters: Partial<SunParameters>;
+    baseParameters: Partial<AudioParams>;
+    parameters: Partial<AudioParams>;
 }
 
 export const createAudioComponent = (
     layerId: string,
-    parameters: Partial<SunParameters>,
+    parameters: Partial<AudioParams>,
 ): AudioComponent => ({
     type: ComponentType.Audio,
     layerId,

@@ -21,6 +21,9 @@ import { createColliderComponent } from '../ecs/components/ColliderComponent';
 import { createMetadataComponent, MetadataComponent } from '../ecs/components/MetadataComponent';
 import { createModulationComponent, ModulationRoute, ModulationComponent } from '../ecs/components/ModulationComponent';
 import { createEffectComponent, EffectComponent, EffectInstance } from '../ecs/components/EffectComponent';
+import { createPhenomenaComponent } from '../ecs/components/PhenomenaComponent';
+import { NoteEvent } from '../events/NoteEvents';
+import { cometModifier, pulsarModifier, lagrangeModifier } from '../ecs/systems/phenomena-modifiers';
 import { logger } from '../utils/logger';
 import { EffectType, SunParameters } from '../types/audio';
 import { AudioEngine } from '../audio/AudioEngine';
@@ -294,6 +297,32 @@ export class OrbitalBodiesManager {
         
         if (body.name) {
             em.addComponent(body.id, createMetadataComponent(body.name));
+        }
+
+        if (body.type === 'phenomenon') {
+            const { phenomenonType, zone, properties } = body.audioParams as any;
+            let modifier;
+
+            switch (phenomenonType) {
+                case 'comet':
+                    modifier = cometModifier(body.id);
+                    break;
+                case 'pulsar':
+                    modifier = pulsarModifier(body.id);
+                    break;
+                case 'lagrange_point':
+                    modifier = lagrangeModifier(body.id);
+                    break;
+                default:
+                    modifier = (note: NoteEvent) => note;
+            }
+
+            em.addComponent(body.id, createPhenomenaComponent(
+                phenomenonType,
+                zone ?? {},
+                modifier,
+                properties ?? {},
+            ));
         }
     }
 

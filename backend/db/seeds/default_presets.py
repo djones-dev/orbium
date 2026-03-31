@@ -4,7 +4,7 @@ import uuid
 
 DEFAULT_PRESETS = [
     {
-        "name": "Pure Sphere",
+        "name": "Planet: Pure Sphere",
         "description": "Clean sine wave generator for smooth, melodic layers.",
         "type": "generator",
         "category": "planet",
@@ -16,7 +16,7 @@ DEFAULT_PRESETS = [
         }
     },
     {
-        "name": "Jagged Core",
+        "name": "Planet: Jagged Core",
         "description": "Aggressive sawtooth wave for rich harmonics and presence.",
         "type": "generator",
         "category": "planet",
@@ -28,7 +28,7 @@ DEFAULT_PRESETS = [
         }
     },
     {
-        "name": "Soft Prism",
+        "name": "Planet: Soft Prism",
         "description": "Mellow triangle wave with a gentle character.",
         "type": "generator",
         "category": "planet",
@@ -40,7 +40,7 @@ DEFAULT_PRESETS = [
         }
     },
     {
-        "name": "Slow Orbital Pulse",
+        "name": "Moon: Slow Orbital Pulse",
         "description": "Slow LFO modulation for evolving textures.",
         "type": "modulator",
         "category": "moon",
@@ -50,7 +50,7 @@ DEFAULT_PRESETS = [
         }
     },
     {
-        "name": "Rapid Shiver",
+        "name": "Moon: Rapid Shiver",
         "description": "Fast LFO rate for vibrating, energetic effects.",
         "type": "modulator",
         "category": "moon",
@@ -60,7 +60,7 @@ DEFAULT_PRESETS = [
         }
     },
     {
-        "name": "Atmospheric Sweep",
+        "name": "Effect: Atmospheric Sweep",
         "description": "Pushed filter resonant sweep for cinematic reveals.",
         "type": "effect",
         "category": "attribute",
@@ -70,7 +70,7 @@ DEFAULT_PRESETS = [
         }
     },
     {
-        "name": "Solar Flare",
+        "name": "Effect: Solar Flare",
         "description": "High distortion and noise for chaotic, gritty sounds.",
         "type": "effect",
         "category": "attribute",
@@ -78,6 +78,37 @@ DEFAULT_PRESETS = [
             "distortion": 80,
             "noiseEnabled": True,
             "noiseVol": -20
+        }
+    },
+    {
+        "name": "Phenomenon: Comet",
+        "description": "A body on a highly elliptical orbit that modifies the pitch of passing notes based on its velocity.",
+        "type": "phenomenon",
+        "category": "phenomenon",
+        "parameters": {
+            "phenomenonType": "comet",
+            "zone": { "proximity": 2 }
+        }
+    },
+    {
+        "name": "Phenomenon: Pulsar",
+        "description": "Emits a rotational beam that acts as a rhythmic gate for notes.",
+        "type": "phenomenon",
+        "category": "phenomenon",
+        "parameters": {
+            "phenomenonType": "pulsar",
+            "properties": { "rotationSpeed": 0.5, "beamWidth": 0.2 }
+        }
+    },
+    {
+        "name": "Phenomenon: Lagrange Point",
+        "description": "A gravitational anchor that quantizes the pitch of nearby notes to a scale.",
+        "type": "phenomenon",
+        "category": "phenomenon",
+        "parameters": {
+            "phenomenonType": "lagrange_point",
+            "zone": { "proximity": 2 },
+            "properties": { "scale": "minor", "root": 60 }
         }
     }
 ]
