@@ -291,6 +291,7 @@ const DragDropHandler = ({
 
                 } else if (preset.role === 'phenomenon') {
                     // Phenomena are standalone bodies placed on the orbital plane
+                    // Don't sync to backend — they're ephemeral spatial entities
                     const id = crypto.randomUUID();
                     const body: OrbitalBody = {
                         id,
@@ -307,7 +308,7 @@ const DragDropHandler = ({
                             shaderUniforms: {}
                         },
                     };
-                    await engine.bodiesManager.addBody(body);
+                    await engine.bodiesManager.addBody(body, false);
                     showToast('PHENOMENON CREATED', 'success');
 
                 } else if (preset.role === 'modulator' || preset.role === 'effect') {
