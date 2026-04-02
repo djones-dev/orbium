@@ -285,18 +285,18 @@ const DragDropHandler = ({
                 const preset = await presetService.getPreset(presetId);
                 if (!preset) return;
 
-                if (preset.type === 'generator') {
+                if (preset.role === 'oscillator') {
                     await engine.instantiateBodyFromPreset(preset, { radius, angle });
                     showToast('PLANET CREATED', 'success');
 
-                } else if (preset.type === 'modulator' || preset.type === 'effect') {
+                } else if (preset.role === 'modulator' || preset.role === 'effect') {
                     const parentId = findNearestParent(8.0);
                     if (!parentId) {
                         showToast('Drop near a planet to attach', 'error');
                         return;
                     }
 
-                    if (preset.type === 'effect') {
+                    if (preset.role === 'effect') {
                         // Effects are attributes on the parent, not new bodies
                         await engine.bodiesManager.addAttribute(parentId, preset.id);
                         showToast('EFFECT APPLIED', 'success');
@@ -307,11 +307,11 @@ const DragDropHandler = ({
                         const body: OrbitalBody = {
                             id,
                             type: 'moon',
-                            presetType: preset.type,
+                            presetType: preset.role,
                             presetId: preset.id,
                             position: { radius: MOON_LOCAL_ORBIT_RADIUS, angle: 0 },
                             velocity: 0.8,
-                            audioParams: preset.parameters,
+                            audioParams: preset.defaults,
                             audioLayerId: `layer-${id}`,
                             visualConfig: {
                                 color: moonColor,
