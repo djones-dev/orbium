@@ -1,16 +1,17 @@
-import { Preset } from '../types/preset';
+import { SynthModule } from '../types/module';
 
 const now = Date.now();
 
-export const DEFAULT_PRESETS: Preset[] = [
-    // Planet Generators
+export const DEFAULT_PRESETS: SynthModule[] = [
+    // Oscillators
     {
-        id: 'planet-sine-pure',
-        name: 'Pure Sphere',
-        description: 'Clean sine wave generator for smooth, melodic layers.',
-        type: 'generator',
+        id: 'osc-sine-pure',
+        name: 'Pure Sine',
+        description: 'Clean sine oscillator. Full-range, transparent, no harmonics.',
+        role: 'oscillator',
         category: 'planet',
-        parameters: {
+        oscillatorType: 'basic',
+        defaults: {
             oscillator: {
                 type: 'basic',
                 params: { waveform: 'sine' }
@@ -24,12 +25,13 @@ export const DEFAULT_PRESETS: Preset[] = [
         updated_at: new Date(now).toISOString()
     },
     {
-        id: 'planet-saw-aggressive',
-        name: 'Jagged Core',
-        description: 'Aggressive sawtooth wave for rich harmonics and presence.',
-        type: 'generator',
+        id: 'osc-saw-bright',
+        name: 'Bright Sawtooth',
+        description: 'Rich sawtooth with mild drive. Bright, harmonically dense.',
+        role: 'oscillator',
         category: 'planet',
-        parameters: {
+        oscillatorType: 'basic',
+        defaults: {
             oscillator: {
                 type: 'basic',
                 params: { waveform: 'sawtooth' }
@@ -43,12 +45,13 @@ export const DEFAULT_PRESETS: Preset[] = [
         updated_at: new Date(now).toISOString()
     },
     {
-        id: 'planet-tri-soft',
-        name: 'Soft Prism',
-        description: 'Mellow triangle wave with a gentle character.',
-        type: 'generator',
+        id: 'osc-tri-soft',
+        name: 'Soft Triangle',
+        description: 'Warm triangle wave. Gentle on the high end, body without edge.',
+        role: 'oscillator',
         category: 'planet',
-        parameters: {
+        oscillatorType: 'basic',
+        defaults: {
             oscillator: {
                 type: 'basic',
                 params: { waveform: 'triangle' }
@@ -61,14 +64,14 @@ export const DEFAULT_PRESETS: Preset[] = [
         created_at: new Date(now).toISOString(),
         updated_at: new Date(now).toISOString()
     },
-    // Moon Modulators
+    // Modulators
     {
-        id: 'moon-slow-pulse',
-        name: 'Slow Orbital LFO',
-        description: 'Slow LFO modulation synced to orbit.',
-        type: 'modulator',
+        id: 'mod-lfo-slow',
+        name: 'Slow LFO',
+        description: 'Slow cyclic modulator for drift and subtle motion.',
+        role: 'modulator',
         category: 'moon',
-        parameters: {
+        defaults: {
             filter: { lfoRate: 0.5 },
             modType: 'lfo',
             modDepth: 30,
@@ -79,12 +82,12 @@ export const DEFAULT_PRESETS: Preset[] = [
         updated_at: new Date(now).toISOString()
     },
     {
-        id: 'moon-fast-shiver',
-        name: 'Triggered ADSR',
-        description: 'ADSR envelope triggered every orbit.',
-        type: 'modulator',
+        id: 'mod-adsr-trigger',
+        name: 'Orbit Trigger',
+        description: 'ADSR envelope fired on each orbital pass.',
+        role: 'modulator',
         category: 'moon',
-        parameters: {
+        defaults: {
             modType: 'adsr',
             modDepth: 80,
             modTarget: 'gainLevel',
@@ -99,14 +102,15 @@ export const DEFAULT_PRESETS: Preset[] = [
         created_at: new Date(now).toISOString(),
         updated_at: new Date(now).toISOString()
     },
-    // Attributes (Effects)
+    // Effects
     {
-        id: 'attr-solar-flare',
-        name: 'Solar Flare',
-        description: 'Intense phaser effect for swirling solar energy.',
-        type: 'effect',
+        id: 'fx-phaser-solar',
+        name: 'Solar Phaser',
+        description: 'Sweeping phase modulation. Adds shimmer and movement.',
+        role: 'effect',
         category: 'attribute',
-        parameters: {
+        effectType: 'phaser',
+        defaults: {
             effects: ['phaser'],
             phaser: {
                 phaserRate: 0.8,
@@ -119,12 +123,13 @@ export const DEFAULT_PRESETS: Preset[] = [
         updated_at: new Date(now).toISOString()
     },
     {
-        id: 'attr-atmospheric-sweep',
-        name: 'Atmospheric Sweep',
-        description: 'Deep spatial reverb for immense atmospheric scale.',
-        type: 'effect',
+        id: 'fx-reverb-deep',
+        name: 'Deep Space Reverb',
+        description: 'Long, diffuse reverb. Dissolves the signal into space.',
+        role: 'effect',
         category: 'attribute',
-        parameters: {
+        effectType: 'reverb',
+        defaults: {
             effects: ['reverb'],
             reverb: {
                 reverbMix: 0.5,

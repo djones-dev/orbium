@@ -47,6 +47,7 @@ export async function verifyPresetManager() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
     };
+    // Note: test uses legacy Preset interface; in production, use SynthModule with role/defaults
 
     await manager.savePreset(newPreset);
     const retrieved = manager.getPresetById('test-preset');
