@@ -1,18 +1,18 @@
 import { Component, ComponentType } from './Component';
 import { OrbitalBodyType } from '../../types/orbital';
-import { PresetType } from '../../types/preset';
+import { ModuleRole } from '../../types/module';
 
 export interface PresetComponent extends Component {
     readonly type: ComponentType.Preset;
     bodyType: OrbitalBodyType;
-    presetType?: PresetType;
+    presetType?: ModuleRole;
     presetId?: string; // absent for the primary sun
 }
 
 export const createPresetComponent = (
     bodyType: OrbitalBodyType,
     presetId?: string,
-    presetType?: PresetType,
+    presetType?: ModuleRole,
 ): PresetComponent => ({
     type: ComponentType.Preset,
     bodyType,

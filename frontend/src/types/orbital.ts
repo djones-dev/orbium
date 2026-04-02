@@ -1,5 +1,5 @@
 import { AudioParams } from './audio';
-import { PresetType } from './preset';
+import { ModuleRole } from './module';
 
 export type OrbitalBodyType = 'sun' | 'planet' | 'moon' | 'phenomenon';
 
@@ -21,7 +21,7 @@ export interface OrbitalBody {
     };
     // Backend persistence fields
     presetId?: string;
-    presetType?: PresetType;
+    presetType?: ModuleRole;
     attributes?: Record<string, any>[];
     parentId?: string;
 }

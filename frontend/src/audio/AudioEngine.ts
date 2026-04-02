@@ -2,7 +2,7 @@ import { AudioParams, AudioLayer } from '../types/audio';
 import { OrbitalBodiesManager } from '../simulation/OrbitalBodiesManager';
 import { PresetManager } from '../presets/PresetManager';
 import { OrbitalBody } from '../types/orbital';
-import { Preset } from '../types/preset';
+import { SynthModule } from '../types/preset';
 import { EventBus } from '../events/EventBus';
 import {
     AudioEventType,
@@ -187,25 +187,25 @@ export class AudioEngine {
     }
 
     public async instantiateBodyFromPreset(
-        preset: Preset,
+        module: SynthModule,
         position: { radius: number; angle: number },
     ): Promise<void> {
         const id = crypto.randomUUID();
-        const moonColor = preset.type === 'modulator' ? '#9b59b6'
-            : preset.type === 'effect' ? '#e67e22'
+        const moonColor = module.role === 'modulator' ? '#9b59b6'
+            : module.role === 'effect' ? '#e67e22'
             : '#32CD32';
         const body: OrbitalBody = {
             id,
-            type: preset.type === 'generator' ? 'planet' : 'moon',
-            presetId: preset.id,
-            presetType: preset.type,
+            type: module.role === 'oscillator' ? 'planet' : 'moon',
+            presetId: module.id,
+            presetType: module.role,
             position,
             velocity: 0.2,
-            audioParams: preset.parameters,
+            audioParams: module.defaults,
             audioLayerId: `layer-${id}`,
             visualConfig: {
-                color: preset.type === 'generator' ? '#4169E1' : moonColor,
-                size: preset.type === 'generator' ? 20 : 10,
+                color: module.role === 'oscillator' ? '#4169E1' : moonColor,
+                size: module.role === 'oscillator' ? 20 : 10,
                 shaderUniforms: {},
             },
         };
