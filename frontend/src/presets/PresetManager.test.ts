@@ -36,18 +36,14 @@ export async function verifyPresetManager() {
     if (sorted[0].name > sorted[sorted.length - 1].name) console.error('Verification Failed: Sorting issue');
 
     // 4. Persistence Test (Mocked or real)
-    const newPreset: Preset = {
-        id: 'test-preset',
-        name: 'Test Preset',
+    const newPreset = {
+        name: 'Test Module',
         description: 'Testing persistence',
-        type: 'generator',
-        category: 'sun',
-        parameters: { oscillator: { type: 'basic', params: { rootFrequency: 440 } } },
-        is_default: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        role: 'oscillator' as const,
+        category: 'sun' as const,
+        defaults: { oscillator: { type: 'basic', params: { rootFrequency: 440 } } },
+        is_default: false
     };
-    // Note: test uses legacy Preset interface; in production, use SynthModule with role/defaults
 
     await manager.savePreset(newPreset);
     const retrieved = manager.getPresetById('test-preset');

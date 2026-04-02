@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useUIStore } from '../stores/uiStore';
 import { usePresets } from '../hooks/usePresets';
-import { PresetCategory, PresetType } from '../types/preset';
+import { PresetCategory } from '../types/preset';
+import { ModuleRole } from '../types/module';
 import './SavePresetModal.css';
 
 export const SavePresetModal: React.FC = () => {
@@ -13,7 +14,7 @@ export const SavePresetModal: React.FC = () => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState<PresetCategory>('planet');
-    const [type, setType] = useState<PresetType>('generator');
+    const [role, setRole] = useState<ModuleRole>('oscillator');
     const [isSaving, setIsSaving] = useState(false);
 
     if (!isOpen) return null;
@@ -32,10 +33,11 @@ export const SavePresetModal: React.FC = () => {
                 name,
                 description,
                 category,
-                type,
-                parameters: {} // Placeholder for Task 13 session capture
+                role,
+                defaults: {}, // Placeholder for Task 13 session capture
+                is_default: false
             });
-            showToast('PRESET SAVED', 'success');
+            showToast('MODULE SAVED', 'success');
             setOpen(false);
             setName('');
             setDescription('');
@@ -84,9 +86,9 @@ export const SavePresetModal: React.FC = () => {
                             </select>
                         </div>
                         <div className="form-group">
-                            <label>TYPE</label>
-                            <select value={type} onChange={e => setType(e.target.value as any)}>
-                                <option value="generator">GENERATOR</option>
+                            <label>ROLE</label>
+                            <select value={role} onChange={e => setRole(e.target.value as ModuleRole)}>
+                                <option value="oscillator">OSCILLATOR</option>
                                 <option value="effect">EFFECT</option>
                                 <option value="modulator">MODULATOR</option>
                             </select>

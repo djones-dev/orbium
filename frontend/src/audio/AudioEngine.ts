@@ -128,10 +128,10 @@ export class AudioEngine {
                 if (!body.presetId) return;
                 const preset = this.presets.getPresetById(body.presetId);
                 if (!preset) return;
-                body.presetType = preset.type as OrbitalBody['presetType'];
+                body.presetType = preset.role;
                 if (body.type === 'moon') {
-                    body.visualConfig.color = preset.type === 'modulator' ? '#9b59b6'
-                        : preset.type === 'effect' ? '#e67e22'
+                    body.visualConfig.color = preset.role === 'modulator' ? '#9b59b6'
+                        : preset.role === 'effect' ? '#e67e22'
                         : '#32CD32';
                 }
             });

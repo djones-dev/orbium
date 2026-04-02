@@ -664,10 +664,10 @@ export const ParameterEditor: React.FC = () => {
                             onClick={async () => {
                                 if (!selectedBody.presetId) return;
                                 try {
-                                    const preset = await presetService.getPreset(selectedBody.presetId);
-                                    if (preset?.parameters) {
-                                        manager.updateBodyParams(selectedBody.id, preset.parameters, true);
-                                        showToast("Reverted to preset", "success");
+                                    const module = await presetService.getPreset(selectedBody.presetId);
+                                    if (module?.defaults) {
+                                        manager.updateBodyParams(selectedBody.id, module.defaults, true);
+                                        showToast("Reverted to module", "success");
                                         // Also trigger save for revert
                                         performSave(selectedBody.id);
                                     }

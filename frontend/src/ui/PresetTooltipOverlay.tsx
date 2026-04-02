@@ -79,7 +79,7 @@ export const PresetTooltipOverlay: React.FC = () => {
                     <div className="tooltip-title-area">
                         <div className="tooltip-title">{hoveredPreset.name.toUpperCase()}</div>
                         <div className="tooltip-subtitle">
-                            {hoveredPreset.category.toUpperCase()} // {hoveredPreset.type.toUpperCase()}
+                            {hoveredPreset.category.toUpperCase()} // {hoveredPreset.role.toUpperCase()}
                         </div>
                     </div>
                 </div>
@@ -90,7 +90,7 @@ export const PresetTooltipOverlay: React.FC = () => {
                     <div className="tooltip-specs">
                         <div className="specs-label">SIGNAL CONFIGURATION</div>
                         <div className="specs-content">
-                            {getParamSummary(hoveredPreset.parameters)}
+                            {getParamSummary(hoveredPreset.defaults)}
                         </div>
                     </div>
                 </div>
