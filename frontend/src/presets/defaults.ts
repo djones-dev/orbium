@@ -139,5 +139,66 @@ export const DEFAULT_PRESETS: SynthModule[] = [
         is_default: true,
         created_at: new Date(now).toISOString(),
         updated_at: new Date(now).toISOString()
+    },
+    // Phenomena
+    {
+        id: 'phen-comet',
+        name: 'Comet',
+        description: 'A fast-moving celestial object that orbits unpredictably.',
+        role: 'phenomenon',
+        category: 'phenomenon',
+        defaults: {
+            phenomenonType: 'comet',
+            zone: { proximity: 2 },
+            modType: 'lfo',
+            modDepth: 0,
+            modTarget: 'filter.filterCutoff'
+        } as any,
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
+    },
+    {
+        id: 'phen-pulsar',
+        name: 'Pulsar',
+        description: 'A rotating beacon. Notes fire only when the beam sweeps across orbiting bodies.',
+        role: 'phenomenon',
+        category: 'phenomenon',
+        defaults: {
+            phenomenonType: 'pulsar',
+            zone: { proximity: 2 },
+            properties: {
+                beamAngle: 0,
+                beamWidth: 0.8,
+                rotationSpeed: 1.2
+            },
+            modType: 'lfo',
+            modDepth: 0,
+            modTarget: 'filter.filterCutoff'
+        } as any,
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
+    },
+    {
+        id: 'phen-lagrange',
+        name: 'Lagrange Point',
+        description: 'A gravitational equilibrium zone. Modulates notes passing through its field.',
+        role: 'phenomenon',
+        category: 'phenomenon',
+        defaults: {
+            phenomenonType: 'lagrange_point',
+            zone: { proximity: 3 },
+            properties: {
+                scale: 'major',
+                root: 60
+            },
+            modType: 'lfo',
+            modDepth: 0,
+            modTarget: 'filter.filterCutoff'
+        } as any,
+        is_default: true,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
     }
 ];

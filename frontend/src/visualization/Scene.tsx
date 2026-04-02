@@ -289,6 +289,27 @@ const DragDropHandler = ({
                     await engine.instantiateBodyFromPreset(preset, { radius, angle });
                     showToast('PLANET CREATED', 'success');
 
+                } else if (preset.role === 'phenomenon') {
+                    // Phenomena are standalone bodies placed on the orbital plane
+                    const id = crypto.randomUUID();
+                    const body: OrbitalBody = {
+                        id,
+                        type: 'phenomenon',
+                        presetType: preset.role,
+                        presetId: preset.id,
+                        position: { radius, angle },
+                        velocity: 0,
+                        audioParams: preset.defaults,
+                        audioLayerId: `layer-${id}`,
+                        visualConfig: {
+                            color: '#ff9900',
+                            size: 1,
+                            shaderUniforms: {}
+                        },
+                    };
+                    await engine.bodiesManager.addBody(body);
+                    showToast('PHENOMENON CREATED', 'success');
+
                 } else if (preset.role === 'modulator' || preset.role === 'effect') {
                     const parentId = findNearestParent(8.0);
                     if (!parentId) {
