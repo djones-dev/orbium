@@ -1,14 +1,14 @@
 import React from 'react';
-import { Preset, PresetCategory, PresetType } from '../types/preset';
+import { SynthModule, ModuleRole } from '../types/module';
 import { useUIStore } from '../stores/uiStore';
 import { logger } from '../utils/logger';
 
 interface PresetItemProps {
-    preset: Preset;
-    onClick?: (preset: Preset) => void;
+    preset: SynthModule;
+    onClick?: (preset: SynthModule) => void;
     isActive?: boolean;
     onDelete?: (id: string) => Promise<void>;
-    onDuplicate?: (preset: Preset) => Promise<Preset>;
+    onDuplicate?: (preset: SynthModule) => Promise<SynthModule>;
 }
 
 export const PresetItem: React.FC<PresetItemProps> = ({
@@ -46,13 +46,13 @@ export const PresetItem: React.FC<PresetItemProps> = ({
             onDuplicate?.(preset);
         } else if (action === 'delete') {
             if (preset.is_default) return;
-            if (window.confirm(`Delete preset "${preset.name}"?`)) {
+            if (window.confirm(`Delete module "${preset.name}"?`)) {
                 onDelete?.(preset.id);
             }
         }
     };
 
-    const getIcon = (category: PresetCategory) => {
+    const getCategoryIcon = (category: string) => {
         switch (category) {
             case 'planet': return '○';
             case 'moon': return '☾';
@@ -62,12 +62,23 @@ export const PresetItem: React.FC<PresetItemProps> = ({
         }
     };
 
-    const getTypeClass = (type: PresetType) => {
-        switch (type) {
-            case 'generator': return 'preset-badge-generator';
+    const getRoleClass = (role: ModuleRole) => {
+        switch (role) {
+            case 'oscillator': return 'preset-badge-generator';
             case 'effect': return 'preset-badge-effect';
             case 'modulator': return 'preset-badge-modulator';
+            case 'phenomenon': return 'preset-badge-phenomenon';
             default: return '';
+        }
+    };
+
+    const getRoleLabel = (role: ModuleRole) => {
+        switch (role) {
+            case 'oscillator': return 'OSC';
+            case 'effect': return 'EFF';
+            case 'modulator': return 'MOD';
+            case 'phenomenon': return 'PHN';
+            default: return 'UNK';
         }
     };
 
@@ -77,9 +88,9 @@ export const PresetItem: React.FC<PresetItemProps> = ({
                 draggable="true"
                 onDragStart={(e) => {
                     e.dataTransfer.setData('presetId', preset.id);
-                    e.dataTransfer.setData('presetType', preset.type);
-                    // Encode type in key name so it's readable during dragover (values are restricted)
-                    e.dataTransfer.setData(`presettype/${preset.type}`, '');
+                    e.dataTransfer.setData('presetType', preset.role);
+                    // Encode role in key name so it's readable during dragover (values are restricted)
+                    e.dataTransfer.setData(`presettype/${preset.role}`, '');
                     e.dataTransfer.effectAllowed = 'copy';
                 }}
                 className={`preset-item ${isActive ? 'active' : ''}`}
@@ -90,13 +101,13 @@ export const PresetItem: React.FC<PresetItemProps> = ({
                 onContextMenu={handleContextMenu}
             >
                 <div className="preset-item-header">
-                    <span className="preset-icon">{getIcon(preset.category)}</span>
+                    <span className="preset-icon">{getCategoryIcon(preset.category)}</span>
                     <span className="preset-name">
                         {preset.name}
                         {preset.is_default && <span className="default-tag">DEFAULT</span>}
                     </span>
-                    <span className={`preset-badge ${getTypeClass(preset.type)}`}>
-                        {preset.type.substring(0, 3)}
+                    <span className={`preset-badge ${getRoleClass(preset.role)}`}>
+                        {getRoleLabel(preset.role)}
                     </span>
                     <button
                         className="preset-menu-trigger"
