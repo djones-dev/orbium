@@ -1,5 +1,4 @@
 import { PresetManager } from './PresetManager';
-import { Preset } from '../types/preset';
 
 /**
  * Manual verification script for PresetManager.
@@ -41,7 +40,7 @@ export async function verifyPresetManager() {
         description: 'Testing persistence',
         role: 'oscillator' as const,
         category: 'sun' as const,
-        defaults: { oscillator: { type: 'basic', params: { rootFrequency: 440 } } },
+        defaults: { oscillator: { type: 'basic' as const, params: { rootFrequency: 440 } } },
         is_default: false
     };
 
