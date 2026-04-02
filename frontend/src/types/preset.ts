@@ -21,3 +21,28 @@ export interface PresetFilters {
     sortBy?: 'name' | 'type' | 'createdAt';
     order?: 'asc' | 'desc';
 }
+
+// Re-export new module types
+export type { SynthModule, ModuleRole, ModuleFilters } from './module';
+import type { SynthModule, ModuleRole } from './module';
+
+// Adapter: convert backend Preset JSON to SynthModule frontend type
+export function toSynthModule(p: Preset): SynthModule {
+    const roleMap: Record<PresetType, ModuleRole> = {
+        generator: 'oscillator',
+        effect: 'effect',
+        modulator: 'modulator',
+        phenomenon: 'phenomenon',
+    };
+    return {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        role: roleMap[p.type] ?? 'oscillator',
+        category: p.category,
+        defaults: p.parameters,
+        is_default: p.is_default,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+    };
+}
