@@ -1,14 +1,14 @@
 import { create } from 'zustand';
-import { Preset } from '../types/preset';
+import { SynthModule } from '../types/preset';
 
 interface UIState {
     isAudioActive: boolean;
     setAudioActive: (active: boolean) => void;
     isPlaying: boolean;
     setPlaying: (playing: boolean) => void;
-    hoveredPreset: Preset | null;
+    hoveredPreset: SynthModule | null;
     hoveredPresetY: number | null;
-    setHoveredPreset: (preset: Preset | null, y?: number) => void;
+    setHoveredPreset: (preset: SynthModule | null, y?: number) => void;
     isSaveModalOpen: boolean;
     setSaveModalOpen: (open: boolean) => void;
     editingPresetId: string | null;

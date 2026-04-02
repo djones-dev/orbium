@@ -1,8 +1,8 @@
-import { Preset, PresetCategory, PresetFilters } from '../types/preset';
+import { PresetCategory, PresetFilters, SynthModule } from '../types/preset';
 import { presetService } from '../services/PresetService';
 
 export class PresetManager {
-    private presets: Preset[] = [];
+    private presets: SynthModule[] = [];
     private isLoaded: boolean = false;
     private offlineQueue: Array<() => Promise<any>> = [];
 
@@ -33,7 +33,7 @@ export class PresetManager {
     /**
      * Loads presets from backend or falls back to cache.
      */
-    public async loadPresets(filters?: PresetFilters): Promise<Preset[]> {
+    public async loadPresets(filters?: PresetFilters): Promise<SynthModule[]> {
         try {
             this.presets = await presetService.fetchPresets(filters);
             this.isLoaded = true;
@@ -45,28 +45,28 @@ export class PresetManager {
     }
 
     /**
-     * Saves or updates a preset.
+     * Saves or updates a module.
      */
-    public async savePreset(preset: Omit<Preset, 'id' | 'created_at' | 'updated_at'> | Preset): Promise<Preset> {
-        const isUpdate = 'id' in preset;
+    public async savePreset(module: Omit<SynthModule, 'id' | 'created_at' | 'updated_at'> | SynthModule): Promise<SynthModule> {
+        const isUpdate = 'id' in module;
 
         const action = async () => {
             if (isUpdate) {
-                return await presetService.updatePreset((preset as Preset).id, preset as Partial<Preset>);
+                return await presetService.updatePreset((module as SynthModule).id, module as Partial<SynthModule>);
             } else {
-                return await presetService.createPreset(preset);
+                return await presetService.createPreset(module);
             }
         };
 
         try {
-            const savedPreset = await action();
-            this.invalidateCache(savedPreset);
-            return savedPreset;
+            const savedModule = await action();
+            this.invalidateCache(savedModule);
+            return savedModule;
         } catch (e) {
             if (typeof window !== 'undefined' && !navigator.onLine) {
                 this.offlineQueue.push(action);
-                // For offline, we return the preset with a temporary ID if it's new
-                // but this is tricky without a real ID. 
+                // For offline, we return the module with a temporary ID if it's new
+                // but this is tricky without a real ID.
                 // For now, let's just throw or handle as we can.
             }
             throw e;
@@ -91,16 +91,16 @@ export class PresetManager {
     }
 
     /**
-     * Filters presets by category (from cache).
+     * Filters modules by category (from cache).
      */
-    public filterByCategory(category: PresetCategory | string): Preset[] {
+    public filterByCategory(category: PresetCategory | string): SynthModule[] {
         return this.presets.filter(p => p.category === category);
     }
 
     /**
-     * Sorts presets by a specific field (from cache).
+     * Sorts modules by a specific field (from cache).
      */
-    public sortBy(field: 'name' | 'type' | 'createdAt', direction: 'asc' | 'desc'): Preset[] {
+    public sortBy(field: 'name' | 'role' | 'createdAt', direction: 'asc' | 'desc'): SynthModule[] {
         return [...this.presets].sort((a, b) => {
             let valA: string | number;
             let valB: string | number;
@@ -108,9 +108,12 @@ export class PresetManager {
             if (field === 'createdAt') {
                 valA = a.created_at;
                 valB = b.created_at;
+            } else if (field === 'name') {
+                valA = a.name;
+                valB = b.name;
             } else {
-                valA = a[field];
-                valB = b[field];
+                valA = a.role;
+                valB = b.role;
             }
 
             if (valA < valB) return direction === 'asc' ? -1 : 1;
@@ -120,16 +123,16 @@ export class PresetManager {
     }
 
     /**
-     * Retrieves a preset by its ID (from cache).
+     * Retrieves a module by its ID (from cache).
      */
-    public getPresetById(id: string): Preset | undefined {
+    public getPresetById(id: string): SynthModule | undefined {
         return this.presets.find(p => p.id === id);
     }
 
     /**
      * Resets the entire library to defaults by fetching from backend.
      */
-    public async resetToDefaults(): Promise<Preset[]> {
+    public async resetToDefaults(): Promise<SynthModule[]> {
         try {
             this.presets = await presetService.getDefaults();
             return this.presets;
@@ -139,12 +142,12 @@ export class PresetManager {
         }
     }
 
-    private invalidateCache(updatedPreset: Preset) {
-        const index = this.presets.findIndex(p => p.id === updatedPreset.id);
+    private invalidateCache(updatedModule: SynthModule) {
+        const index = this.presets.findIndex(p => p.id === updatedModule.id);
         if (index > -1) {
-            this.presets[index] = updatedPreset;
+            this.presets[index] = updatedModule;
         } else {
-            this.presets.push(updatedPreset);
+            this.presets.push(updatedModule);
         }
     }
 
@@ -152,7 +155,7 @@ export class PresetManager {
         return this.isLoaded;
     }
 
-    public getCachedPresets(): Preset[] {
+    public getCachedPresets(): SynthModule[] {
         return this.presets;
     }
 }
