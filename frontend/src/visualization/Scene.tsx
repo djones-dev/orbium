@@ -414,6 +414,83 @@ const SelectedBodyOrbitRing = ({ bodyId }: { bodyId: string }) => {
 };
 
 /**
+ * Trigger position markers — shows a small indicator at the triggerAngle position on each body's orbit.
+ * Selected body's marker is bright; all others are dim.
+ */
+const TriggerMarker = ({ bodyId, isSelected }: { bodyId: string; isSelected: boolean }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
+
+    useFrame(() => {
+        const world = World.getInstance();
+        const pos = world.entities.getComponent<PositionComponent>(bodyId, ComponentType.Position);
+        const hierarchy = world.entities.getComponent<HierarchyComponent>(bodyId, ComponentType.Hierarchy);
+
+        if (!pos || !meshRef.current) return;
+
+        // Get trigger angle from PhysicsSystem
+        const triggerAngle = PhysicsSystem.getInstance().getTriggerAngle(bodyId);
+
+        // Compute marker position
+        let cx = 0, cz = 0;
+
+        // For moons, offset by parent's live world position
+        if (hierarchy?.parentId) {
+            const parentPos = world.entities.getComponent<PositionComponent>(hierarchy.parentId, ComponentType.Position);
+            if (parentPos) {
+                cx = parentPos.radius * Math.cos(parentPos.angle);
+                cz = parentPos.radius * Math.sin(parentPos.angle);
+            }
+        }
+
+        // Marker on orbit ring at triggerAngle
+        const radius = pos.radius;
+        const x = cx + radius * Math.cos(triggerAngle);
+        const z = cz + radius * Math.sin(triggerAngle);
+
+        meshRef.current.position.set(x, 0, z);
+    });
+
+    return (
+        <mesh ref={meshRef} rotation={[Math.PI / 2, Math.PI / 4, 0]}>
+            <coneGeometry args={[0.1, 0.2, 4]} />
+            <meshBasicMaterial
+                color="#33ff33"
+                opacity={isSelected ? 0.9 : 0.1}
+                transparent
+            />
+        </mesh>
+    );
+};
+
+const TriggerMarkers = () => {
+    const [bodyIds, setBodyIds] = useState<string[]>([]);
+    const { selectedBodyId } = useSelection();
+
+    useEffect(() => {
+        const world = World.getInstance();
+        const bus = EventBus.getInstance();
+
+        const rebuild = () => {
+            const ids = world.entities.query(ComponentType.Position, ComponentType.Preset);
+            setBodyIds([...ids]);
+        };
+
+        rebuild();
+        const unsubAdd = bus.on(AudioEventType.BODY_ADDED, rebuild);
+        const unsubRem = bus.on(AudioEventType.BODY_REMOVED, rebuild);
+        return () => { unsubAdd(); unsubRem(); };
+    }, []);
+
+    return (
+        <group>
+            {bodyIds.map(id => (
+                <TriggerMarker key={id} bodyId={id} isSelected={id === selectedBodyId} />
+            ))}
+        </group>
+    );
+};
+
+/**
  * 3D visualization scene for Orbium
  */
 const Scene = () => {
@@ -474,6 +551,8 @@ const Scene = () => {
                     highlightedParentId={highlightedParentId}
                     cursorPos={cursorPos}
                 />
+
+                <TriggerMarkers />
 
                 {renderData.map(id => (
                     <Sun key={id} id={id} />

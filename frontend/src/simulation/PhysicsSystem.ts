@@ -63,6 +63,10 @@ export class PhysicsSystem {
         return body ? { ...body.position } : undefined;
     }
 
+    getTriggerAngle(id: string): number {
+        return this.bodies.get(id)?.triggerAngle ?? 0;
+    }
+
     getBodyIds(): string[] {
         return Array.from(this.bodies.keys());
     }

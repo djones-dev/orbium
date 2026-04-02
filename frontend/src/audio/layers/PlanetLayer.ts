@@ -1,6 +1,8 @@
 import { AudioLayer, AudioParams } from '../../types/audio';
 import { OscillatorBank } from '@/audio/sources/OscillatorBank';
 import { FilterEffect } from '@/audio/effects/FilterEffect';
+import { ReverbEffect } from '@/audio/effects/ReverbEffect';
+import { PhaserEffect } from '@/audio/effects/PhaserEffect';
 
 /**
  * PlanetLayer — Lightweight Synthesis
@@ -18,9 +20,12 @@ export class PlanetLayer implements AudioLayer {
 
   private context: AudioContext;
   private outputGain: GainNode;
+  private splitGain: GainNode;
 
   private oscillatorBank: OscillatorBank;
   private filter: FilterEffect;
+  private reverb: ReverbEffect;
+  private phaser: PhaserEffect;
 
   private params: AudioParams = {
     oscillator: {
@@ -60,14 +65,31 @@ export class PlanetLayer implements AudioLayer {
     this.outputGain = context.createGain();
     this.outputGain.connect(this.analyser);
 
+    // Create split gain for effect routing
+    this.splitGain = context.createGain();
+
     // Create modules
     this.oscillatorBank = new OscillatorBank(context, false);
     this.filter = new FilterEffect(context);
+    this.reverb = new ReverbEffect(context);
+    this.phaser = new PhaserEffect(context);
 
-    // Wire the simple signal chain:
-    // OscillatorBank → FilterEffect → outputGain → analyser
+    // Wire the signal chain:
+    // OscillatorBank → FilterEffect → splitGain
+    //                                  → ReverbEffect → outputGain
+    //                                  → PhaserEffect → outputGain
+    //                                  → (dry) → outputGain
+    //                                → analyser
     this.oscillatorBank.output.connect(this.filter.input);
-    this.filter.output.connect(this.outputGain);
+    this.filter.output.connect(this.splitGain);
+
+    this.splitGain.connect(this.reverb.input);
+    this.reverb.output.connect(this.outputGain);
+
+    this.splitGain.connect(this.phaser.input);
+    this.phaser.output.connect(this.outputGain);
+
+    this.splitGain.connect(this.outputGain);
 
     // Apply initial params
     this.updateParams(this.params);
@@ -88,6 +110,8 @@ export class PlanetLayer implements AudioLayer {
     // Delegate to modules
     this.oscillatorBank.updateParams(this.params);
     this.filter.updateParams(this.params);
+    this.reverb.updateParams(this.params);
+    this.phaser.updateParams(this.params);
 
     // Handle output gain
     const { gainLevel } = this.params;
@@ -118,6 +142,9 @@ export class PlanetLayer implements AudioLayer {
   dispose(): void {
     this.oscillatorBank.dispose();
     this.filter.dispose();
+    this.reverb.dispose();
+    this.phaser.dispose();
+    this.splitGain.disconnect();
     this.outputGain.disconnect();
     this.analyser.disconnect();
   }
