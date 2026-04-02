@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { usePresets } from '../hooks/usePresets';
-import { PresetCategory } from '../types/preset';
+import { ModuleRole } from '../types/module';
 import { useUIStore } from '../stores/uiStore';
 import { PresetItem } from './PresetItem';
 import './PresetBrowser.css';
 
-type SortField = 'name' | 'type' | 'createdAt';
+type SortField = 'name' | 'role' | 'createdAt';
 type SortDirection = 'asc' | 'desc';
 
 export const PresetBrowser: React.FC = () => {
@@ -13,15 +13,15 @@ export const PresetBrowser: React.FC = () => {
     const showToast = useUIStore(state => state.showToast);
 
     // State
-    const [activeCategory, setActiveCategory] = useState<PresetCategory | 'all'>('all');
+    const [activeRole, setActiveRole] = useState<ModuleRole | 'all'>('all');
     const [sortField, setSortField] = useState<SortField>('name');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
     // Apply filtering and sorting
     const displayedPresets = useMemo(() => {
-        let filtered = activeCategory === 'all'
+        let filtered = activeRole === 'all'
             ? allPresets
-            : allPresets.filter(p => p.category === activeCategory);
+            : allPresets.filter(p => p.role === activeRole);
 
         return [...filtered].sort((a, b) => {
             let valA: string | number | boolean;
@@ -30,44 +30,46 @@ export const PresetBrowser: React.FC = () => {
             if (sortField === 'createdAt') {
                 valA = a.created_at || '';
                 valB = b.created_at || '';
+            } else if (sortField === 'role') {
+                valA = a.role;
+                valB = b.role;
             } else {
-                valA = (a as any)[sortField];
-                valB = (b as any)[sortField];
+                valA = a.name;
+                valB = b.name;
             }
 
             if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [allPresets, activeCategory, sortField, sortDirection]);
+    }, [allPresets, activeRole, sortField, sortDirection]);
 
-    const categories: { label: string; value: PresetCategory | 'all'; icon: string }[] = [
+    const roles: { label: string; value: ModuleRole | 'all'; icon: string }[] = [
         { label: 'ALL', value: 'all', icon: '◈' },
-        { label: 'PLANETS', value: 'planet', icon: '○' },
-        { label: 'MOONS', value: 'moon', icon: '☾' },
-        { label: 'ATTR', value: 'attribute', icon: '◆' },
-        { label: 'PHENOM', value: 'phenomenon', icon: '✶' },
+        { label: 'OSCILLATORS', value: 'oscillator', icon: '◎' },
+        { label: 'EFFECTS', value: 'effect', icon: '◆' },
+        { label: 'MODULATORS', value: 'modulator', icon: '☾' },
     ];
 
     const sortFields: { label: string; value: SortField }[] = [
         { label: 'NAME', value: 'name' },
-        { label: 'TYPE', value: 'type' },
+        { label: 'ROLE', value: 'role' },
         { label: 'DATE', value: 'createdAt' },
     ];
 
     return (
         <div className="preset-browser-layout">
-            {/* Category Filter Strap */}
+            {/* Role Filter Strap */}
             <div className="category-sidebar">
-                {categories.map(cat => (
+                {roles.map(role => (
                     <button
-                        key={cat.value}
-                        className={`category-btn ${activeCategory === cat.value ? 'active' : ''}`}
-                        onClick={() => setActiveCategory(cat.value)}
-                        title={cat.label}
+                        key={role.value}
+                        className={`category-btn ${activeRole === role.value ? 'active' : ''}`}
+                        onClick={() => setActiveRole(role.value)}
+                        title={role.label}
                     >
-                        <span className="cat-icon">{cat.icon}</span>
-                        <span className="cat-label">{cat.label.substring(0, 4)}</span>
+                        <span className="cat-icon">{role.icon}</span>
+                        <span className="cat-label">{role.label.substring(0, 4)}</span>
                     </button>
                 ))}
             </div>
@@ -121,7 +123,7 @@ export const PresetBrowser: React.FC = () => {
                                     onDelete={async (id) => {
                                         try {
                                             await deletePreset(id);
-                                            showToast('PRESET DELETED', 'success');
+                                            showToast('MODULE DELETED', 'success');
                                         } catch (err: any) {
                                             showToast(err.message || 'DELETE FAILED', 'error');
                                         }
@@ -132,10 +134,11 @@ export const PresetBrowser: React.FC = () => {
                                                 name: `${p.name} (COPY)`,
                                                 description: p.description,
                                                 category: p.category,
-                                                type: p.type,
-                                                parameters: p.parameters
+                                                role: p.role,
+                                                defaults: p.defaults,
+                                                is_default: false
                                             });
-                                            showToast('PRESET DUPLICATED', 'success');
+                                            showToast('MODULE DUPLICATED', 'success');
                                             return result;
                                         } catch (err: any) {
                                             showToast(err.message || 'DUPLICATE FAILED', 'error');
@@ -146,7 +149,7 @@ export const PresetBrowser: React.FC = () => {
                             ))
                         ) : (
                             <div className="no-presets">
-                                <span className="opacity-30">NO PRESETS FOUND</span>
+                                <span className="opacity-30">NO MODULES FOUND</span>
                             </div>
                         )}
                     </div>
